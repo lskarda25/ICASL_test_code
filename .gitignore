@@ -1,5 +1,7 @@
 # ignore any files in directories named .ipynb_checkpoints
 .ipynb_checkpoints/
 
+__pycache__/
+
 # Type this into terminal for ignored file/folders if you're already tracking them:
 # git rm --cached exFileName
