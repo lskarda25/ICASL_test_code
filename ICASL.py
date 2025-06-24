@@ -137,7 +137,9 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
         elif (legend_style == "b"):
             for legend_line in legend.get_lines(): 
                 # Thickens widths of the legend's example lines, NOT the actual lines on the plot
-                legend_line.set_linewidth(2.5) 
+                legend_line.set_linewidth(2.5)
+            for legend_line, color in zip(legend.get_lines(), colors):
+                legend_line.set_color(color)
     
     # Adds annotations to legend
     if (annotations != None):
