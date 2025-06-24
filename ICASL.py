@@ -69,7 +69,7 @@ def test():
 # The returned list will include the 'stop' value, which numpy usually excludes
 # Rounds to a far out decimal place. Because of how floats are stored, np.arange could return bizarre values otherwise. i.e. 2 -> 1.99999999999999995
 def arange(start, stop, step):
-    listA = np.arange(start, stop+step, step)
+    listA = np.arange(start, stop, step)
     listA = [float(round(element, 12)) for element in listA]
     return listA
 
