@@ -30,7 +30,7 @@
 # reformat() - Converts a Cadence csv into a tree structure of 2-column csv files
 # read_cadence_csv() - Reads a cadence-style csv into a tree of dictionaries, an easy data structure for plotting
 # read_tree_csv() - Reads a tree of directories into a tree of dictionaries, an easy data structure for plotting
-# read_tree_names() - Reads names of constants that were swept (temp, VREF) from a tree of directories. Makes many assumptions.
+# read_tree_names() - Reads names of constants that were swept (temp, VREF) from a tree of directories. Makes assumptions.
 # read_cadence_metadata_names() - Reads names of constants that were swept (temp, VREF) from a cadence csv's metadata
 # read_tree_constant_values() - Reads swept values of constants from directory tree
 # read_cadence_constant_values() - Reads swept values of constants from cadence csv file
@@ -101,7 +101,8 @@ def start_plot(title, xlabel, ylabel, style="a", cm_num=13):
         ax.set_title(title)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        ax.margins(x=0) # Removes margins on left and right side - lines no longer stop abruptly before reaching edge of plot. Not always desired.
+        # Removes margins on left/right side - lines no longer stop abruptly before edge of plot. Not always desired.
+        ax.margins(x=0)
         ax.grid()
     elif (style == "b"): # Bigger & bolder text
         ax.set_title(title, fontdict={'fontsize': 16, 'fontweight': 'bold'}, y = 1.03)
@@ -138,7 +139,8 @@ def add_legend_text(legend, text):
 # This is all the code that can only run after a plot is filled. 
 # Honestly, this one's a bit messy (despite best effort). Might not be worth learning. 
 # Adding colors afterwards is nice - don't need to know the number beforehand. Completely abstracted away.
-def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gist_rainbow'), legend=None, legend_style="None", annotations=None, close=True, show=False):
+def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gist_rainbow'), 
+                legend=None, legend_style="None", annotations=None, close=True, show=False):
     # Sets line color
     lines = ax.lines
     colors = cm(np.linspace(0, 1, len(lines)))
@@ -368,7 +370,8 @@ def read_cadence_metadata(header_cell_or_file, quiet=True):
     else:
         if "(" not in hcof or ")" not in hcof:
             # Input is neither csv file or cell with parenthesis to extract metadata from
-            if not quiet: print(f"Warning: Input '{hcof}' is not a .csv and does not contain parenthesis. Returning empty list.")
+            if not quiet: print(f"Warning: Input '{hcof}' is not a .csv and does not contain parenthesis. \
+                                Returning empty list.")
             return []
         else:
             if not quiet: print(f"Assuming input: '{hcof}' is a header cell.")
@@ -395,8 +398,10 @@ def print_cadence_metadata_names(header_cell_or_file, quiet=True):
 # Output: The following number. (i.e. 100)
 def parse_num_from_string(full_string, identification_string, quiet=True):
     if f"{identification_string}" in full_string:
-        str = full_string[full_string.find(f"{identification_string}")+len(identification_string)+1:] # Removes everything before (and through) the equals sign
-        num = re.match(r'[+-]?(([0-9]+\.?[0-9]*)|(\.[0-9]+))([eE][+-]?\d+)?', str) # Pulls out int or float from start of the remaining string.
+        # Removes everything before (and through) the equals sign
+        str = full_string[full_string.find(f"{identification_string}")+len(identification_string)+1:] 
+        # Pulls out int or float from start of the remaining string.
+        num = re.match(r'[+-]?(([0-9]+\.?[0-9]*)|(\.[0-9]+))([eE][+-]?\d+)?', str) 
         if num == None:
             if not quiet: print(f"Parsed {full_string} with ID {identification_string}. Found no number after.")
             return(None)
@@ -431,7 +436,8 @@ def parse_constant_name_from_string(full_string):
                 index = index-1
             else:
                 break
-        trimmed_string = trimmed_string[:index+1] # Removes last string composed of characters from num_parts, and everythin after it.
+        # Removes last string composed of chars from num_parts, and everything after it.
+        trimmed_string = trimmed_string[:index+1]
         trimmed_string = trimmed_string.replace("=", "") # Remove ALL equals signs
         if (trimmed_string[-1] == '_'): # Remove last character, if it is an underline
             trimmed_string = trimmed_string[:-1]
@@ -456,7 +462,8 @@ def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
                           if (os.path.isdir(os.path.join(current_dir, file_name)) or file_name[-4:] == ".csv")]
         if (quiet == False): print(f"Relevant names: {relevant_names}")
         if relevant_names == []:
-            raise ValueError(f"{current_dir} was read as a branch in a tree of data, but did not contain any directories or csv's within.")
+            raise ValueError(f"{current_dir} was read as a branch in a tree of data, but did not \
+                             contain any directories or csv's within.")
         for file_name in relevant_names:
             name = parse_constant_name_from_string(file_name)
             if name == None:
@@ -485,7 +492,8 @@ def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
                 if max_name[i:] in names:
                     repeat = True
             if repeat == True:
-                print(f"Warning: {max_name} was detected in two separate depths of tree. Using next most likely constant name at lower depth.")
+                print(f"Warning: {max_name} was detected in two separate depths of tree. Using next most likely \
+                      constant name at lower depth.")
                 blacklist.append(max_name)
                 continue
             elif repeat == False:
@@ -538,7 +546,8 @@ def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
                         if new_index > index:
                             index = new_index
                     if (split_strategy == "c"):
-                        # Assume the variable name is separated by a double underscore, and has no double underscores in the middle.
+                        # Assume the variable name is separated by a double underscore, 
+                        # and has no double underscores in the middle.
                         new_index = (len(max_name)-max_name.rfind("__"))*-1
                         if new_index > index:
                             index = new_index
@@ -574,7 +583,8 @@ def read_dir_constant_values(read_dir_path, identification_string):
         if num is not None:
             listA.append(num)
     if (len(listA) == 0):
-        print(f"Found no files/directories in {read_dir_path} containing {identification_string} followed by an int or float")
+        print(f"Found no files/directories in {read_dir_path} containing {identification_string} \
+              followed by an int or float")
         return []
     return clean_list(listA) # converts to ints/float, sorts, filters
 
@@ -636,7 +646,8 @@ def match_metadata_to_defined_constants(header_cell, defined_constants, error_re
     constant_names = read_cadence_metadata_names(header_cell, quiet)
     for constant in defined_constants:
         if constant not in constant_names:
-            print(f"\nERROR: The string \"{constant}\" from constant_names_in_order was not found in the header cell of column {error_column_num}")
+            print(f"\nERROR: The string \"{constant}\" from constant_names_in_order was not found in the \
+                  header cell of column {error_column_num}")
             print(f"The constant names in the metadata of {error_read_file_path}'s header cell in column {error_column_num} are:")
             print_cadence_metadata_names(error_read_file_path, quiet)
             raise ValueError("See above")
@@ -714,7 +725,7 @@ def reformat(write_dir_name, read_file_path, write_file_name, constant_names_in_
                 new_df = df.iloc[:, [i, i+1]]
                 new_df.columns = [new_x_label, new_y_label]
                 new_df = new_df.astype(str) # Converts all to strings. Next line will throw an error if they're not. 
-                new_df = new_df[new_df[new_df.columns[0]].str.strip().astype(bool)] # Clears empty rows and purely whitespace rows
+                new_df = new_df[new_df[new_df.columns[0]].str.strip().astype(bool)] # Clears empty rows and whitespace rows
                 new_df.to_csv(write_current, index=False)
                 if quiet == False:
                     print(f"Writing to {write_current}")
@@ -722,7 +733,8 @@ def reformat(write_dir_name, read_file_path, write_file_name, constant_names_in_
 
 # Reads a cadence-style csv (sims) into a tree of dictionaries. Allows for shared sim/test plotting code.
 # To-Do: Functionality for multiple csv files at final branch
-def read_cadence_csv(read_file_path, constant_names_in_order="default", new_x_label="default", new_y_label="default", quiet=True):
+def read_cadence_csv(read_file_path, constant_names_in_order="default", new_x_label="default", 
+                     new_y_label="default", quiet=True):
     df = pd.read_csv(read_file_path)
     if constant_names_in_order == "default":
         constant_names_in_order = read_cadence_metadata_names(read_file_path, quiet)
@@ -765,7 +777,7 @@ def read_cadence_csv(read_file_path, constant_names_in_order="default", new_x_la
                     y_label = new_y_label
                 new_df.columns = [x_label, y_label]
                 new_df = new_df.astype(str) # Converts all to strings. Next line will throw an error if they're not. 
-                new_df = new_df[new_df[new_df.columns[0]].str.strip().astype(bool)] # Clears empty rows and purely whitespace rows
+                new_df = new_df[new_df[new_df.columns[0]].str.strip().astype(bool)] # Clears empty rows and whitespace rows
                 new_df = convert_to_num(new_df) # Convert back to either ints or floats - decides which.
                 current_dict[constant["value"]] = new_df
                 if quiet == False:
@@ -796,7 +808,8 @@ def read_tree_csv(read_dir_path, constant_names_in_order, file_identifier="defau
     suggested_names = False
     global suggested_file_IDs
     suggested_file_IDs = False
-    data, all_values, final_column_values = read_tree_csv_recursion(current_dir, constant_names_in_order, file_identifier, quiet)
+    data, all_values, final_column_values = read_tree_csv_recursion(current_dir, constant_names_in_order, 
+                                                                    file_identifier, quiet)
     i = 1
     for constant_name in constant_names_in_order:
         print(f"Layer of keys {i} for {constant_name}: {all_values[constant_name]}")
@@ -811,7 +824,8 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
     if isinstance(remaining_names_in_order, str):
         name = remaining_names_in_order
     elif isinstance(remaining_names_in_order, collections.abc.Iterable):
-        if not quiet: print(f"Remaining names in order[0]: {remaining_names_in_order[0]}. Type: {type(remaining_names_in_order[0])}")
+        if not quiet: print(f"Remaining names in order[0]: {remaining_names_in_order[0]}. \
+                            Type: {type(remaining_names_in_order[0])}")
         name = remaining_names_in_order[0]
         if not isinstance(name, str):
             raise ValueError("Collection of constant names contains a non-string value")
@@ -854,15 +868,18 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
             if value is None:
                 continue
             if value in error_checking_values:
-                print(f"Warning: the value {value} appears alongside the constant {name} more than once in {current_dir}. Output will be unpredictable")
+                print(f"Warning: the value {value} appears alongside the constant {name} more than once in {current_dir}. \
+                      Output will be unpredictable")
             error_checking_values.append(value)
             new_dir = os.path.join(current_dir, dir)
 
             if not os.path.isdir(new_dir):
-                print(f"Warning: Found something with \"{name}\" and \"{value}\" in {current_dir} that should be a directory, but is not. Skipping.")
+                print(f"Warning: Found something with \"{name}\" and \"{value}\" in {current_dir} that should be \
+                      a directory, but is not. Skipping.")
                 continue
             if quiet == False: print(f"Opening {new_dir}")
-            deeper_data, deeper_values, deeper_final_column_values = read_tree_csv_recursion(new_dir, remaining_names_in_order[1:], file_identifier, quiet)
+            deeper_data, deeper_values, deeper_final_column_values = \
+            read_tree_csv_recursion(new_dir, remaining_names_in_order[1:], file_identifier, quiet)
             if deeper_data == None and deeper_values == None:
                 continue
             # Process data and all_values on way out
@@ -882,7 +899,8 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
         current_data = {}
         relevant_files = [file for file in os.listdir(current_dir) if name in file and ".csv" in file]
         if len(relevant_files) > 1 and file_identifier == "default":
-            if not quiet: print("No file identifier provided, and more than one available csv. Returning without reading data.")
+            if not quiet: print("No file identifier provided, and more than one available csv. \
+                                Returning without reading data.")
             return None, None, None
         files = [file for file in os.listdir(current_dir) if file_identifier in file and name in file and ".csv" in file]
         if len(files) == 0:
@@ -910,7 +928,8 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
             if value is None:
                 continue
             if value in error_checking_values:
-                print(f"Warning: the value {value} appears alongside the constant {name} and file identifier {file_identifier} more than once in {current_dir}. Output will be unpredictable")
+                print(f"Warning: the value {value} appears alongside the constant {name} and file identifier \
+                      {file_identifier} more than once in {current_dir}. Output will be unpredictable")
             error_checking_values.append(value)
             file_path = os.path.join(current_dir, file_name)
             if (quiet == False): print(f"Reading file: {file_path}")
@@ -921,10 +940,10 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
     current_values[name] = clean_list(current_values[name], quiet)
     return current_data, current_values, final_column_values
 
-# Can read either a tree of directories or a cadence-style csv.
-# This one seems like a bad idea if I make read_cadence capable of reading in multiple files at once 
-# (and thus being callable on a dir)
-# def read_csv(read_path, constant_names_in_order, new_x_label="default", new_y_label="default", tree_file_identifier="default", quiet=True):
+# Can read either a tree of directories or a cadence-style csv. This one seems like a bad idea if I make 
+# read_cadence_csv() capable of reading in multiple files at once (and thus being callable on a dir)
+# def read_csv(read_path, constant_names_in_order, new_x_label="default", new_y_label="default", 
+#              tree_file_identifier="default", quiet=True):
 #     if not os.path.exists(read_path):
 #         raise ValueError("Path does not exist")
 #     elif os.path.isdir(read_path):
