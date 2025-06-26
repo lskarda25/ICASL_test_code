@@ -12,7 +12,7 @@
 # execute_cells_by_tag() - Runs all cells in a jupyter notebook with a given tag. Allows for runing cells in groups.
 # read_cell_metadata() - Given a cell, return its metadata in a dictionary structure (metadata must be in parentheses, cadence csv format)
 # read_file_metadata() - Given a file, returns the first header cell's metadata in a dictionary structure
-# print_file_metadata_names() - Given a file, prints the first header cell's metadata's names only (Most readable)
+# print_cadence_metadata_names() - Given a file, prints the first header cell's metadata's names only (Most readable)
 # read_dir_constant_values() - Iterates through a directory, matching numbers in the file/folder names using the preceding string. Returns a list of values
 # read_cadence_constant_values() - Iterates through a Cadence csv, matching numbers in metadata using the preceding string. Returns a list of values
 # read_constants() - Determines whether to call read_tree_constants() or read_cadence_constant_values() 
@@ -67,9 +67,10 @@ def test():
 
 # Performs numpy's arange() function (which generates a list of numbers from a start, stop, and step)
 # The returned list will include the 'stop' value, which numpy usually excludes
-# Rounds to a far out decimal place. Because of how floats are stored, np.arange could return bizarre values otherwise. i.e. 2 -> 1.99999999999999995
 def arange(start, stop, step):
-    listA = np.arange(start, stop, step)
+    # Adding one more step size makes the stop value inclusive. Adding 1e-12 accounts for exclusion due to numpy's imprecision. (See next comment)
+    listA = np.arange(start, stop+step+1e-12, step)
+    # Rounds to a far out decimal place. Because of how floats are stored, np.arange could return bizarre values otherwise. i.e. 2 -> 1.99999999999999995
     listA = [float(round(element, 12)) for element in listA]
     return listA
 
@@ -82,12 +83,14 @@ def start_plot(title, xlabel, ylabel, style="a", cm_num=13): # 13 is the number 
         ax.set_title(title)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
+        ax.margins(x=0) # Removes margins on left and right side - lines no longer stop abruptly before reaching edge of plot
         ax.grid()
     elif (style == "b"): # Bigger & bolder text
         ax.set_title(title, fontdict={'fontsize': 16, 'fontweight': 'bold'}, y = 1.03)
         ax.set_xlabel(xlabel, fontdict={'fontsize': 12})
         ax.set_ylabel(ylabel, fontdict={'fontsize': 12})
         ax.tick_params(axis='both', which='major', labelsize=10)
+        ax.margins(x=0)
         ax.grid()
 
     # Color settings
@@ -303,14 +306,15 @@ def clean_list_strings(listA, quiet=True):
 
 # The following functions read in multidimensional data from different csv organizational structures.
 
-
-def read_cell_metadata(header_cell):
+# Input: header cell of a cadence-style csv (Ex: df.columns[0])
+# Output: Custom data structure of names and values
+def read_cell_metadata(header_cell, quiet=True):
     metadata = re.findall(r'\((.*?)\)', header_cell) # Finds all within text in parentheses, saves into list
     if metadata == []:
-        print("No metadata found within parenthesis.")
-        return -1
+        if not quiet: print("Warning: Input cell is not a .csv and does not contain parenthesis. Returning empty list.")
+        return []
     if len(metadata) > 1:
-        print("Warning: Multiple sets of parentheses found within metadata. Used the first.")
+        if not quiet: print("Warning: Multiple sets of parentheses found within metadata. Used the first.")
     constants = re.split(r',\s*', metadata[0]) # Splits first text in parenthesis using comma as delimiter
     split_constants = []
     for constant in constants:
@@ -318,29 +322,54 @@ def read_cell_metadata(header_cell):
         constant_dict["name"] = re.split(r'=\s*', constant)[0]
         constant_dict["value"] = convert_to_num(re.split(r'=\s*', constant)[1])
         split_constants.append(constant_dict)
+    if not quiet: print(f"Read constants from a header cell:{split_constants}")
     return split_constants # Returns ints or floats, not strings
 
-def read_cell_metadata_names(header_cell):
-    split_constants = read_cell_metadata(header_cell)
+# Input: Cadence-style csv file path
+# Output: Custom data structure of names and values (sourced from the first column's metadata)
+def read_file_metadata(read_file, quiet=True):
+    if (read_file[-4:] != ".csv"):
+        if not quiet: print("Warning: File path does not point to a .csv. Returning empty list.")
+        return []
+    df = pd.read_csv(read_file)
+    header_cell = df.columns[0]
+    return read_cell_metadata(header_cell, quiet)
+
+# Determines which of the above two functions to call by examining input. Returns same structure.
+# Input: EITHER a header cell from a cadence-style csv OR the csv file path
+# Output: Custom data structure of names and values
+def read_cadence_metadata(header_cell_or_file, quiet=True):
+    hcof = str(header_cell_or_file)
+    if len(hcof) > 4 and hcof[-4:] == ".csv":
+        # Input is csv file
+        if not quiet: print(f"Determined input '{hcof}' is a csv file.")
+        return read_file_metadata(hcof, quiet)
+    else:
+        if "(" not in hcof or ")" not in hcof:
+            # Input is neither csv file or cell with parenthesis to extract metadata from
+            if not quiet: print(f"Warning: Input '{hcof}' is not a .csv and does not contain parenthesis. Returning empty list.")
+            return []
+        else:
+            if not quiet: print(f"Assuming input: '{hcof}' is a header cell.")
+            return read_cell_metadata(hcof, quiet)
+
+# Input: EITHER a header cell OR the csv file path
+# Output: List of names (no values)
+def read_cadence_metadata_names(header_cell, quiet=True):
+    split_constants = read_cadence_metadata(header_cell, quiet)
     names = []
     for constant in split_constants:
         names.append(constant["name"])
+    if not quiet: print(f"Extracted names: {names} from metadata: {split_constants}")
     return names
+    
+# Input: EITHER a header cell OR the csv file path
+# Output: Prints out names of variables in metadata out, with each on a new line. Returns nothing.
+def print_cadence_metadata_names(header_cell_or_file, quiet=True):
+    names = read_cadence_metadata_names(header_cell_or_file, quiet)
+    for name in names:
+        print(name)
 
-def read_file_metadata(read_file):
-    if (read_file[-4:] != ".csv"):
-        print("File path does not point to a csv.")
-        return -1
-    df = pd.read_csv(read_file)
-    header_cell = df.columns[0]
-    return read_cell_metadata(header_cell)
-
-def print_file_metadata_names(read_file):
-    split_constants = read_file_metadata(read_file)
-    for constant in split_constants:
-        print(constant["name"])
-
-# Internal
 def parse_num_from_string(full_string, identification_string, quiet=True):
     if f"{identification_string}" in full_string:
         str = full_string[full_string.find(f"{identification_string}")+len(identification_string)+1:] # Removes everything before (and through) the equals sign
@@ -350,11 +379,10 @@ def parse_num_from_string(full_string, identification_string, quiet=True):
             return(None)
         else:
             if not quiet: print(f"Parsed {full_string} with ID {identification_string}. Found {num.group()}.")
-            return num.group()
+            return convert_to_num(num.group())
     else:
          if not quiet: print(f"Parsed {full_string}. It does not contain ID {identification_string}.")
 
-# Internal
 def parse_constant_name_from_string(full_string):
     num = re.search(r'[+-]?(([0-9]+\.?[0-9]*)|(\.[0-9]+))([eE][+-]?\d+)?', full_string) # Pulls out int or float
     if num == None:
@@ -390,7 +418,7 @@ def parse_constant_name_from_string(full_string):
 # likely options, loosely following (not exclusively) the naming scheme we've been using thus far.
 # If this doesn't succeed, you may need different or cleaner directory structures or names
 # It follows the last branch read from each directory
-def read_tree_names(read_dir_path, split_strategy='b', quiet=True):
+def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
     current_dir = read_dir_path
     names = []
     file_identifiers = []
@@ -570,6 +598,25 @@ def read_cadence_constant_values(read_csv_path, identification_string):
 #         print("File path does not point to a directory or a csv")
 #         return -1
 
+# Reads cadence metadata, compares to a pre-defined list of constants. Sorts/filters to be equivalent to defined constants
+# and produces a helpful blurb of text if something doesn't match.
+# Input: cadence-style csv's header cell, a list of constants for comparison, and details for outputting helpful error
+def match_metadata_to_defined_constants(header_cell, defined_constants, error_read_file_path, error_column_num, quiet=True):
+    constants = read_cadence_metadata(header_cell, quiet)
+    #print(f"Constants: {constants}")
+    constant_names = read_cadence_metadata_names(header_cell, quiet)
+    for constant in defined_constants:
+        if constant not in constant_names:
+            print(f"\nERROR: The string \"{constant}\" from constant_names_in_order was not found in the header cell of column {error_column_num}")
+            print(f"The constant names in the metadata of {error_read_file_path}'s header cell in column {error_column_num} are:")
+            print_cadence_metadata_names(error_read_file_path, quiet)
+            raise ValueError("See above")
+    sorted_constants = sorted(constants, key=lambda constant: defined_constants.index(constant["name"]))
+    filtered_constants = [constant for constant in sorted_constants if constant["name"] in defined_constants]
+    #print(f"Sorted/filtered: {filtered_constants}")
+    return filtered_constants
+
+
 # Converts a cadence-style csv into a tree of directories terminated with 2D csvs
 def reformat(write_dir_name, read_file_path, write_file_name, constant_names_in_order, 
              new_constant_names_in_order="default", new_x_label="default", new_y_label="default", quiet=True):
@@ -593,39 +640,26 @@ def reformat(write_dir_name, read_file_path, write_file_name, constant_names_in_
     if new_constant_names_in_order == "default":
         new_constant_names_in_order = defined_constants
 
-    # This is all literally just so I can set the precision later, don't bother reading
-    # Does a bit of error checking too I guess
+    # This is so I can set the precision later. Some error-checking.
     all_vals = {}
     for constant in defined_constants:
         all_vals[constant] = []
     for i in range(0, len(df.columns)-1, 2):
         col1, col2 = df.columns[i], df.columns[i + 1]
         #print(f"\nProcessing columns: {col1}, {col2}")
+
         if (read_cell_metadata(col1) != read_cell_metadata(col2)):
             print("ERROR: X and Y metadata do not match")
         if (df[col1].size != df[col2].size):
             print("ERROR: X and Y columns differ in length")
-        constants = read_cell_metadata(col1)
-        #print(f"Constants: {constants}")
-        constant_names = read_cell_metadata_names(df.columns[i])
-        for constant in defined_constants:
-            if constant not in constant_names:
-                print(f"\nERROR: The string \"{constant}\" from constant_names_in_order was not found in header cell {i}")
-                print(f"The constant names in {read_file_path}'s cell {i}'s metadata are:\n")
-                print_file_metadata_names(read_file_path)
-        sorted_constants = sorted(constants, key=lambda constant: defined_constants.index(constant["name"]))
-        filtered_constants = [constant for constant in sorted_constants if constant["name"] in defined_constants]
-        #print(f"Sorted/filtered: {filtered_constants}")
-        
+
+        filtered_constants = match_metadata_to_defined_constants(col1, defined_constants, read_file_path, i, quiet)
         for constant in filtered_constants:
             all_vals[constant["name"]].append(constant["value"])  
 
     # Produces csv file hierarchy 
     for i in range(0, len(df.columns)-1, 2): # Iterate through columns in steps of 2
-        constants = read_cell_metadata(df.columns[i])
-        sorted_constants = sorted(constants, key=lambda constant: defined_constants.index(constant["name"])) # Sorts using each constant's index in defined_constants
-        filtered_constants = [constant for constant in sorted_constants if constant["name"] in defined_constants]
-        
+        filtered_constants = match_metadata_to_defined_constants(df.columns[i], defined_constants, read_file_path, i, quiet)
         write_current = write_dir
         for constant in filtered_constants:
             value = set_precision(float(constant['value']), all_vals[constant['name']])
@@ -655,29 +689,22 @@ def remove_text_in_parentheses(string):
 
 # Reads a cadence-style csv (sims) into a tree of dictionaries. Allows for shared sim/test plotting code.
 # To-Do: Functionality for multiple csv files at final branch
-def read_cadence_csv(read_file_path, constant_names_in_order, new_x_label="default", new_y_label="default", quiet=True):
+def read_cadence_csv(read_file_path, constant_names_in_order="default", new_x_label="default", new_y_label="default", quiet=True):
     df = pd.read_csv(read_file_path)
+    if constant_names_in_order == "default":
+        constant_names_in_order = read_cadence_metadata_names(read_file_path, quiet)
     defined_constants = constant_names_in_order
     data = {}
     all_values = {}
 
     if new_x_label == "default":
         new_x_label = remove_text_in_parentheses(df.columns[0])
-        print(f"x-axis data label set to: '{new_x_label}'. Use 'new_x_label=' to choose your own name")
+        print(f"x-axis data label set to: '{new_x_label}'. Add argument 'new_x_label=' to choose your own name")
     if new_y_label == "default":
         new_y_label = remove_text_in_parentheses(df.columns[1])
-        print(f"y-axis data label set to : '{new_y_label}'.  Use 'new_y_label=' to choose your own name")
+        print(f"y-axis data label set to: '{new_y_label}'. Add argument 'new_y_label=' to choose your own name")
     for i in range(0, len(df.columns) - 1, 2): # Iterate through columns in steps of 2
-        constants = read_cell_metadata(df.columns[i])
-        constant_names = read_cell_metadata_names(df.columns[i])
-        for constant in defined_constants:
-            if constant not in constant_names:
-                print(f"\nERROR: The string \"{constant}\" from constant_names_in_order was not found in header cell {i}")
-                print(f"The constant names in {read_file_path}'s cell {i}'s metadata are:\n")
-                print_file_metadata_names(read_file_path)
-        sorted_constants = sorted(constants, key=lambda constant: defined_constants.index(constant["name"])) # Sorts using each constant's index in defined_constants
-        filtered_constants = [constant for constant in sorted_constants if constant["name"] in defined_constants]
-        
+        filtered_constants = match_metadata_to_defined_constants(df.columns[i], defined_constants, read_file_path, i, quiet)
         current_dict = data
         for constant in filtered_constants:
             name = constant["name"]
@@ -717,7 +744,7 @@ def read_cadence_csv(read_file_path, constant_names_in_order, new_x_label="defau
     for constant_name in constant_names_in_order:
         print(f"Layer {i} of keys for {constant_name}: {all_values[constant_name]}")
         i = i+1
-    print(f"Final dataframe columns: [{new_x_label}, {new_y_label}]")
+    print(f"Final dataframe columns: [{new_x_label}, {new_y_label}]\n")
     return data, all_values
 
 suggested_names = False
@@ -740,7 +767,7 @@ def read_tree_csv(read_dir_path, constant_names_in_order, file_identifier="defau
     for constant_name in constant_names_in_order:
         print(f"Layer of keys {i} for {constant_name}: {all_values[constant_name]}")
         i = i+1
-    print(f"Final dataframe columns: {final_column_values}]")
+    print(f"Final dataframe columns: {final_column_values}\n")
     return data, all_values
 
 # Data and all_values are both built in reverse
@@ -819,6 +846,10 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
     else:
         #Read in dataframes
         current_data = {}
+        relevant_files = [file for file in os.listdir(current_dir) if name in file and ".csv" in file]
+        if len(relevant_files) > 1 and file_identifier == "default":
+            if not quiet: print("No file identifier provided, and more than one available csv. Returning without reading data.")
+            return None, None, None
         files = [file for file in os.listdir(current_dir) if file_identifier in file and name in file and ".csv" in file]
         if len(files) == 0:
             global suggested_file_IDs
@@ -837,7 +868,7 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
                     print(ID)
                 print("")
                 suggested_file_IDs = True
-            return None, None
+            return None, None, None
         error_checking_values = []
         for file_name in files:
             value = parse_num_from_string(file_name, name)
