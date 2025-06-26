@@ -1,39 +1,55 @@
-# Collection of functions for plotting, testing, and working with mutlidimensional data. 
-# Copy/Paste the ones you want, move this file into your directory, or call an 
-# import ICASL, and write ICASL.example_function() when calling.
+# Collection of functions for plotting, testing, and working with multidimensional data. 
+# Copy/paste the functions you want, or import the file into your code and write ICASL.example_function() to call them.
+# Two ways to import:
+# 1) Move into the same directory as your code and write "import ICASL" at top
+# 2) Move into any higher directory than your code and copy/paste the commented out section of code below. I'll likely
+#    place this somewhere high up in the Sharepoint eventually
 #
-# Includes:
-# start_plot() - Applies default plotting settings
-# finish_plot() - Saves, closes, and applies default legend settings
-# scale() - Scales a list into Engineering Notation
-# prefix() - Returns the corresponding Engineering Notation prefix when given an unscaled list
-# determine_precision() - Returns precision of highest precision element in a list. Can be used to add appropriate trailing zeros.
-# set_precision() - Returns an element as a string with the same precision as the highest of the list that contains it
-# execute_cells_by_tag() - Runs all cells in a jupyter notebook with a given tag. Allows for runing cells in groups.
-# read_cell_metadata() - Given a cell, return its metadata in a dictionary structure (metadata must be in parentheses, cadence csv format)
-# read_file_metadata() - Given a file, returns the first header cell's metadata in a dictionary structure
-# print_cadence_metadata_names() - Given a file, prints the first header cell's metadata's names only (Most readable)
-# read_dir_constant_values() - Iterates through a directory, matching numbers in the file/folder names using the preceding string. Returns a list of values
-# read_cadence_constant_values() - Iterates through a Cadence csv, matching numbers in metadata using the preceding string. Returns a list of values
-# read_constants() - Determines whether to call read_tree_constants() or read_cadence_constant_values() 
-# reformat() - Converts a Cadence csv into a tree structure of 2-column csv files.
-# read_cadence_csv() - Reads a cadence-style csv (sims) into a tree of dictionaries. Allows for shared sim/test plotting code. WIP
-# read_tree_csv() - Reads a tree of directories (tests) into a tree of dictionaries. Allows for shared sim/test plotting code. WIP
+# Use the outline in the bottom left (VScode) to navigate functions. Press "Collapse all" in top right of it.
+# The most useful functions are:
+#
+# arange() - performs numpy.arange(), but fixes many of the bugs and stupid behavior in it.
+# start_plot() - Applies default plotting settings. Styles built-in to choose from, can add more.
+# add_legend_text() - Adds an annotation to the bottom of the legend. Clean/organized way to add multiple of them.
+# finish_plot() - Saves, shows, closes, colors lines, applies legend styling, adds annotations.
+# scale() - Scales a list of nums such that the highest is between 1-999 (useful for Engineering Notation)
+# prefix() - Returns the corresponding Engineering Notation prefix, when provided an unscaled list
+# set_precision() - Pass an element, and a list it belongs to. Returns with trailing zeros. Makes file names sort better.
+# execute_cells_by_tag() - Runs all cells in a jupyter notebook with a given tag. Allows for running cells in groups. 
+#                          (Must copy/paste into your own code)
+# 
+# There are two types of csv input formats we often need to plot. I refer to them in this code as:
+# 1) Tree (Tests). Branching directories, each named for a constant value of a sweep variable (temp=100), which end in 
+# multiple csv files, also named for a constant value (VREF=.8), which contain 2D data within.
+# 2) Cadence (Sims). Virtuoso's default csv format is to stack 2 column data horizontally into one big file, embedding the 
+#    constant values for each simulation within the metadata of the header cells. Harder to write code for.
+#
+# The rest of these functions are designed to provide either conversion or dual functionality between these two formats.
+# Whether using them is worth the learning curve is debatable. AI is already good enough to do most of our plotting for us.
+# They are:
+# reformat() - Converts a Cadence csv into a tree structure of 2-column csv files
+# read_cadence_csv() - Reads a cadence-style csv into a tree of dictionaries, an easy data structure for plotting
+# read_tree_csv() - Reads a tree of directories into a tree of dictionaries, an easy data structure for plotting
+# read_tree_names() - Reads names of constants that were swept (temp, VREF) from a tree of directories. Makes many assumptions.
+# read_cadence_metadata_names() - Reads names of constants that were swept (temp, VREF) from a cadence csv's metadata
+# read_tree_constant_values() - Reads swept values of constants from directory tree
+# read_cadence_constant_values() - Reads swept values of constants from cadence csv file
 
-import matplotlib.pyplot as plt  # Plotting graphs and visualizing data
-import matplotlib
-import matplotlib.offsetbox as ob
-import numpy as np               # Numerical operations, particularly with arrays
-import os                        # Interact with the operating system, such as handling file paths
-import pandas as pd              # Data manipulation and analysis
-import os                        # Interface with Operating System
-import re                        # Regular expressions for text searching
-import math
-import collections               # I use this to check whether a collection has been passed to a function
-import importlib.util            # Used to load python files more dynamically
+# Most other functions are simply meant to be used internally by other functions. Don't bother looking at them.
 
-# Copy, paste, and uncomment (ctrl+/) the following code into a python/jupyter file to load these functions
-# ICASL.py must first be in either the same directory or any higher directory.
+import matplotlib.pyplot as plt   # Plotting graphs and visualizing data
+import matplotlib.offsetbox as ob # An internal Matplotlib data structure. Used for cleaner annotations.
+import numpy as np                # Numerical operations, particularly with arrays
+import os                         # Interact with the operating system, such as handling file paths
+import pandas as pd               # Intuitive labeled 2D data
+import os                         # Interface with Operating System
+import re                         # Regular expressions for text searching
+import math                       # Does math
+import collections                # I use this to check whether input to a function is a collection (list,array,etc.)
+import matplotlib.legend as lg    # I use this to check whether input to a function is a matplotlib legend
+
+# Copy, paste, and uncomment (ctrl+/) the following into a python/jupyter file to load these functions from any higher 
+# directory that contains ICASL.py
 ######################################################################
 # import os
 # import importlib.util
@@ -59,7 +75,7 @@ import importlib.util            # Used to load python files more dynamically
 #             raise ValueError("ICASL.py not found")
 #         else:
 #             current_dir = parent_dir
-#ICASL.test() 
+# ICASL.test() 
 #######################################################################
 
 def test():
@@ -68,14 +84,16 @@ def test():
 # Performs numpy's arange() function (which generates a list of numbers from a start, stop, and step)
 # The returned list will include the 'stop' value, which numpy usually excludes
 def arange(start, stop, step):
-    # Adding one more step size makes the stop value inclusive. Adding 1e-12 accounts for exclusion due to numpy's imprecision. (See next comment)
+    # Adding one more step size makes the stop value inclusive. 
+    # Adding 1e-12 accounts for exclusion due to numpy's imprecision. (See next comments)
     listA = np.arange(start, stop+step+1e-12, step)
-    # Rounds to a far out decimal place. Because of how floats are stored, np.arange could return bizarre values otherwise. i.e. 2 -> 1.99999999999999995
+    # Rounds to a far out decimal place. Because of how floats are stored, np.arange could return bizarre values otherwise. 
+    # i.e. 2 -> 1.99999999999999995
     listA = [float(round(element, 12)) for element in listA]
     return listA
 
 # Apply default parameters that are shared by all plots. Any property can be changed afterwards if needed.
-def start_plot(title, xlabel, ylabel, style="a", cm_num=13): # 13 is the number of temps we've been testing at
+def start_plot(title, xlabel, ylabel, style="a", cm_num=13):
     fig, ax = plt.subplots(layout='constrained')
     
     # Text, tick, and grid Settings
@@ -83,7 +101,7 @@ def start_plot(title, xlabel, ylabel, style="a", cm_num=13): # 13 is the number 
         ax.set_title(title)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        ax.margins(x=0) # Removes margins on left and right side - lines no longer stop abruptly before reaching edge of plot
+        ax.margins(x=0) # Removes margins on left and right side - lines no longer stop abruptly before reaching edge of plot. Not always desired.
         ax.grid()
     elif (style == "b"): # Bigger & bolder text
         ax.set_title(title, fontdict={'fontsize': 16, 'fontweight': 'bold'}, y = 1.03)
@@ -94,12 +112,14 @@ def start_plot(title, xlabel, ylabel, style="a", cm_num=13): # 13 is the number 
         ax.grid()
 
     # Color settings
+    # Finish_plot() does this as well, with requiring a cm_num. But that function's not as intuitive to use overall.
     if (style in "ab"):
         cm=plt.get_cmap('gist_rainbow')
         ax.set_prop_cycle('color', [cm(1.*i/cm_num) for i in range(cm_num)])
     
     return fig, ax
 
+# Adds an annotation into the bottom of the legend. Centered text, legend box will expand if text is large.
 def add_legend_text(legend, text):
     if (not isinstance(text, str)):
         print("Error: Legend annotation was passed non-string value: {text}. Not adding to plot.")
@@ -116,7 +136,8 @@ def add_legend_text(legend, text):
 # Keyword arguments are optional. If not provided, the default values in the definition below will be assumed.
 
 # This is all the code that can only run after a plot is filled. 
-# Honestly, doesn't save as much time/code length to use this. Ignore if you want. 
+# Honestly, this one's a bit messy (despite best effort). Might not be worth learning. 
+# Adding colors afterwards is nice - don't need to know the number beforehand. Completely abstracted away.
 def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gist_rainbow'), legend=None, legend_style="None", annotations=None, close=True, show=False):
     # Sets line color
     lines = ax.lines
@@ -124,12 +145,12 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
     for line, color in zip(lines, colors):
         line.set_color(color)
     
-    # Produces legend
+    # Legend styling. Adds a legend if you don't pass one to this function.
     if (legend != None or legend_style != "None"):
         if (legend == None):
             # If you don't pass a legend but request a style, I put it in a box on the right side
             legend = ax.legend(bbox_to_anchor=(1.02, 1))
-        elif (not isinstance(legend, matplotlib.legend.Legend)):
+        elif (not isinstance(legend, lg.Legend)):
             raise ValueError(f"legend is of invalid type {type(legend)}. It should the object that ax.legend() returns.")
         # Style legend
         if (legend_style == "None"):
@@ -188,7 +209,6 @@ def scale(list):
 def prefix(list):
     array = np.asarray(list, dtype='float')
     max = np.max(np.abs(array))
-
     if max < 1e-18:
         print("Prefix not implemented")
         prefix = "?"
@@ -206,14 +226,14 @@ def prefix(list):
     else:
         print("Prefix not implemented")
         prefix = "?"
-
     return prefix
 
 # Determines and returns the highest precision of all elements
-# Accepts ints, floats, or string equivalents as single elements or within a collection
+# Accepts ints, floats, or string equivalents, either as single elements or within a collection
 def determine_precision(input):
     if isinstance(input, collections.abc.Iterable) and not isinstance(input, str):
-        listA = [round(float(element), 13) for element in input] # Round to remove float imprecision (occurs around 16th digit for doubles)
+        # Round to remove float imprecision (occurs around 16th digit for doubles)
+        listA = [round(float(element), 13) for element in input]
         precisions = []
         for element in listA:
             element_str = str(element).rstrip('0') # Removes trailing zeros
@@ -234,11 +254,34 @@ def determine_precision(input):
     else:
         raise ValueError(f"Unsupported Type: {type(input)}")
 
-# Determines the highest precision of all elements in a list, returns specified element as a string with that precision. Adds trailing zeros.
-# This avoids poorly sorted and inconsistent file names. 
+# Determines the highest precision of all elements in a list, returns specified element as a string with that precision. 
+# Adds trailing zeros. This avoids poorly sorted and inconsistent file names. 
 def set_precision(imprecise_element, list):
     imprecise_element = float(imprecise_element)
     return f"{imprecise_element:.{determine_precision(list)}f}"
+
+# This runs every cell in its notebook that has the specified tag. Allows for groupings.
+# You'll need to copy and paste this in, can't call it from another file.
+# Turn on File->'Auto Save' if you want to use this. Reads cell data from disk, so otherwise there could be misalignments.
+#
+# import nbformat # For manipulating notebooks
+# def execute_cells_by_tag(group_tag):
+#     filepath = globals()['__vsc_ipynb_file__'] # Returns path to this file
+#     print(filepath)
+#     nb = nbformat.read(open(filepath, 'r', encoding='utf-8'), as_version=4) # Saves this notebook as JSON
+#     ip = get_ipython()                                                      # Gets the "global InteractiveShell instance"
+#     print(ip)
+#     for cell_number in range(len(nb.cells)):
+#         cell=nb.cells[cell_number]
+#         #print(cell)
+#         if 'tags' in cell.metadata:
+#             if group_tag in cell.metadata.tags:
+#                 ip.run_cell(cell.source)
+#                 print(f"Ran Cell {cell_number}")
+
+##########################################################################################################################
+############### The next 15-ish functions are not that useful to know/use. Mostly behind the scenes stuff. ###############
+##########################################################################################################################
 
 # Converts ints, floats, and strings - either alone, in a collection, or in a dataframe - into either ints or floats
 # depending on their precision. (all collections will convert to lists)
@@ -266,7 +309,7 @@ def convert_to_num(input):
     else:
         raise ValueError(f"Unsupported Type: {type(input)}")
 
-# Internal
+# Sorts, removes duplicates, converts to either floats or ints depending on precision, rounds off imprecision.
 def clean_list(listA, quiet=True):
     if not quiet: print(f"Cleaning list of nums: {listA}")
     listA = [element for element in listA if element is not None] # Remove None Type
@@ -276,35 +319,13 @@ def clean_list(listA, quiet=True):
     listA = [round(element, 12) for element in listA]
     return listA
 
-# Internal
+# Similar to clean_list(), but designed for string inputs and string outputs.
 def clean_list_strings(listA, quiet=True):
     if not quiet: print(f"Cleaning list of strings: {listA}")
     listA = [element for element in listA if element is not None] # Remove None Type
     listA = list(set(listA)) # Removes duplicates
     listA = sorted(listA) # Sorts
     return listA
-
-# This runs every cell in its notebook that has the specified tag. Allows for groupings.
-# You'll need to copy and paste this in, can't call it from another file.
-# Turn on File->'Auto Save' if you want to use this. Reads cell data from disk, so otherwise there could be misalignment.
-#
-# import nbformat # For manipulating notebooks
-# def execute_cells_by_tag(group_tag):
-#     filepath = globals()['__vsc_ipynb_file__'] # Returns path to this file
-#     print(filepath)
-#     nb = nbformat.read(open(filepath, 'r', encoding='utf-8'), as_version=4) # Saves this notebook as JSON
-#     ip = get_ipython()                                                      # Gets the "global InteractiveShell instance"
-#     print(ip)
-#     for cell_number in range(len(nb.cells)):
-#         cell=nb.cells[cell_number]
-#         #print(cell)
-#         if 'tags' in cell.metadata:
-#             if group_tag in cell.metadata.tags:
-#                 ip.run_cell(cell.source)
-#                 print(f"Ran Cell {cell_number}")
-
-
-# The following functions read in multidimensional data from different csv organizational structures.
 
 # Input: header cell of a cadence-style csv (Ex: df.columns[0])
 # Output: Custom data structure of names and values
@@ -370,6 +391,8 @@ def print_cadence_metadata_names(header_cell_or_file, quiet=True):
     for name in names:
         print(name)
 
+# Input: string in a form similar to "temp=100". Needs identification_string (i.e. "temp")
+# Output: The following number. (i.e. 100)
 def parse_num_from_string(full_string, identification_string, quiet=True):
     if f"{identification_string}" in full_string:
         str = full_string[full_string.find(f"{identification_string}")+len(identification_string)+1:] # Removes everything before (and through) the equals sign
@@ -383,6 +406,8 @@ def parse_num_from_string(full_string, identification_string, quiet=True):
     else:
          if not quiet: print(f"Parsed {full_string}. It does not contain ID {identification_string}.")
 
+# Input: string in a form similar to "temp=100". 
+# Output: All text that comes before the last number. (i.e. "temp")
 def parse_constant_name_from_string(full_string):
     num = re.search(r'[+-]?(([0-9]+\.?[0-9]*)|(\.[0-9]+))([eE][+-]?\d+)?', full_string) # Pulls out int or float
     if num == None:
@@ -417,7 +442,9 @@ def parse_constant_name_from_string(full_string):
 # There's no guaranteed way to know this (without perfect, standardized directory creation). I simply chose the most
 # likely options, loosely following (not exclusively) the naming scheme we've been using thus far.
 # If this doesn't succeed, you may need different or cleaner directory structures or names
-# It follows the last branch read from each directory
+# If we start using double underscores in file names between test names and the last swept variable, split_strategy 'c'
+# should always succeed.
+# It follows the last branch it reads each time it delves deeper.
 def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
     current_dir = read_dir_path
     names = []
@@ -537,7 +564,7 @@ def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
             continue
 # Man that one was worse than I thought - definitely not worth the time. Oh well.
 
-# Reads a directory's contents and generates a list of numbers from the names of its files/folders. 
+# Reads a directory's contents and generates a list of numbers (swept values) from the names of its files/folders. 
 # Must have a "identification_string=" before each value to match with.
 def read_dir_constant_values(read_dir_path, identification_string):
     listA = []
@@ -551,8 +578,8 @@ def read_dir_constant_values(read_dir_path, identification_string):
         return []
     return clean_list(listA) # converts to ints/float, sorts, filters
 
-# Given list of constants (in proper order), navigates a tree of directories and returns the values swept of those constants (as dict)
-# Follows the last branch read from each directory,
+# Given list of constants (in proper order), navigates a tree of directories and returns the swept values of those 
+# constants (as a dict). Follows the last branch read from each directory,
 def read_tree_constant_values(read_dir_path, constant_names=None, quiet=True):
     current_dir = read_dir_path
     values = {}
@@ -574,7 +601,7 @@ def read_tree_constant_values(read_dir_path, constant_names=None, quiet=True):
         current_dir = save_path
     return values
     
-# Reads a cadence generated csv and generates a list of values from the metadata of each column
+# Reads a cadence generated csv and generates a list of swept values from the metadata of each column
 # Must have an "identification_string=" before each value to match with.
 def read_cadence_constant_values(read_csv_path, identification_string):
     if identification_string[-1] == '=':
@@ -589,6 +616,8 @@ def read_cadence_constant_values(read_csv_path, identification_string):
             listA.append(md[identification_string])
     return clean_list(listA) # converts to ints/float, sorts, filters
 
+# This was intended to determine whether a cadence or tree style format was passed. Would work well for current
+# implementation, but would likely cause problems after further development.
 # def read_constants(read_path, identification_string):
 #     if os.path.isdir(read_path):
 #         return read_tree_constant_values(read_path, identification_string)
@@ -598,8 +627,8 @@ def read_cadence_constant_values(read_csv_path, identification_string):
 #         print("File path does not point to a directory or a csv")
 #         return -1
 
-# Reads cadence metadata, compares to a pre-defined list of constants. Sorts/filters to be equivalent to defined constants
-# and produces a helpful blurb of text if something doesn't match.
+# Reads cadence metadata, compares to a pre-defined list of constants. Sorts/filters to be equivalent to those defined 
+# constants and produces a helpful blurb of text if something doesn't match.
 # Input: cadence-style csv's header cell, a list of constants for comparison, and details for outputting helpful error
 def match_metadata_to_defined_constants(header_cell, defined_constants, error_read_file_path, error_column_num, quiet=True):
     constants = read_cadence_metadata(header_cell, quiet)
@@ -616,8 +645,17 @@ def match_metadata_to_defined_constants(header_cell, defined_constants, error_re
     #print(f"Sorted/filtered: {filtered_constants}")
     return filtered_constants
 
+# Strips metadata out of Cadence column name
+def remove_text_in_parentheses(string):
+    trimmed_string = re.sub(r'\(.*?\)', '', string)
+    trimmed_string = re.sub(r'  ', '_', trimmed_string)
+    return trimmed_string
 
-# Converts a cadence-style csv into a tree of directories terminated with 2D csvs
+#############################################################################
+###################### These next three can be useful #######################
+#############################################################################
+
+# Converts a cadence-style csv into a tree of directories terminated with 2 column csvs.
 def reformat(write_dir_name, read_file_path, write_file_name, constant_names_in_order, 
              new_constant_names_in_order="default", new_x_label="default", new_y_label="default", quiet=True):
     df = pd.read_csv(read_file_path)
@@ -625,7 +663,8 @@ def reformat(write_dir_name, read_file_path, write_file_name, constant_names_in_
     write_dir = os.path.join(working_dir, write_dir_name)
     os.makedirs(write_dir, exist_ok=True)
 
-    defined_constants = constant_names_in_order # One name makes more sense in this code, one makes more sense when setting inputs
+    # One name makes more sense in this code, one makes more sense when setting inputs
+    defined_constants = constant_names_in_order
 
     # Convert new names from list to dictionary
     new_constant_names = {}
@@ -680,12 +719,6 @@ def reformat(write_dir_name, read_file_path, write_file_name, constant_names_in_
                 if quiet == False:
                     print(f"Writing to {write_current}")
                 break
-
-# Strips metadata
-def remove_text_in_parentheses(string):
-    trimmed_string = re.sub(r'\(.*?\)', '', string)
-    trimmed_string = re.sub(r'  ', '_', trimmed_string)
-    return trimmed_string
 
 # Reads a cadence-style csv (sims) into a tree of dictionaries. Allows for shared sim/test plotting code.
 # To-Do: Functionality for multiple csv files at final branch
@@ -747,6 +780,7 @@ def read_cadence_csv(read_file_path, constant_names_in_order="default", new_x_la
     print(f"Final dataframe columns: [{new_x_label}, {new_y_label}]\n")
     return data, all_values
 
+# This is considered bad practice. I don't care too much. Definitely ugly though.
 suggested_names = False
 suggested_file_IDs = False
 
@@ -888,7 +922,8 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
     return current_data, current_values, final_column_values
 
 # Can read either a tree of directories or a cadence-style csv.
-# This one seems like a bad idea if I make read_cadence capable of reading in multiple files at once (and thus being called on a dir)
+# This one seems like a bad idea if I make read_cadence capable of reading in multiple files at once 
+# (and thus being callable on a dir)
 # def read_csv(read_path, constant_names_in_order, new_x_label="default", new_y_label="default", tree_file_identifier="default", quiet=True):
 #     if not os.path.exists(read_path):
 #         raise ValueError("Path does not exist")
