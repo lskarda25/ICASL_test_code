@@ -262,6 +262,10 @@ def set_precision(imprecise_element, list):
     imprecise_element = float(imprecise_element)
     return f"{imprecise_element:.{determine_precision(list)}f}"
 
+def execute_cells_by_tag(group_tag):
+    # Placeholder for outline. Actual code is below. 
+    pass
+
 # This runs every cell in its notebook that has the specified tag. Allows for groupings.
 # You'll need to copy and paste this in, can't call it from another file.
 # Turn on File->'Auto Save' if you want to use this. Reads cell data from disk, so otherwise there could be misalignments.
@@ -280,6 +284,11 @@ def set_precision(imprecise_element, list):
 #             if group_tag in cell.metadata.tags:
 #                 ip.run_cell(cell.source)
 #                 print(f"Ran Cell {cell_number}")
+#
+# All outputs will be printed here
+# This code is janky and might depreciate fast
+# Only other way to do this would be through javascript - I had kernal issues. I don't think VSCode supports switching between javascript and python in the middle of running code
+# Or an extension, but the ones that do this are more obscure (and seem poorly written) and I don't want to download malicious code to UT's network
 
 ##########################################################################################################################
 ############### The next 15-ish functions are not that useful to know/use. Mostly behind the scenes stuff. ###############
