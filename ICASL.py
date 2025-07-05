@@ -32,8 +32,8 @@
 # read_tree_csv() - Reads a tree of directories into a tree of dictionaries, an easy data structure for plotting
 # read_tree_names() - Reads names of constants that were swept (temp, VREF) from a tree of directories. Makes assumptions.
 # read_cadence_metadata_names() - Reads names of constants that were swept (temp, VREF) from a cadence csv's metadata
-# read_tree_constant_values() - Reads swept values of constants from directory tree
-# read_cadence_constant_values() - Reads swept values of constants from cadence csv file
+# read_tree_values() - Reads swept values of constants from directory tree
+# read_cadence_values() - Reads swept values of constants from cadence csv file
 
 # Most other functions are simply meant to be used internally by other functions. Don't bother looking at them.
 
@@ -460,7 +460,7 @@ def parse_constant_name_from_string(full_string):
 # If we start using double underscores in file names between test names and the last swept variable, split_strategy 'c'
 # should always succeed.
 # It follows the last branch it reads each time it delves deeper.
-def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
+def read_tree_names(read_dir_path, split_strategy="default", quiet=True):
     current_dir = read_dir_path
     names = []
     file_identifiers = []
@@ -507,7 +507,8 @@ def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
                 continue
             elif repeat == False:
                 break
-        # Find if there's more csvs or directories with that name
+        if (quiet == False): print(f"Highest count name: {max_name}. Its count: {max_val}")
+        # Find if there's more csvs or more directories that have that name
         csv_amount = 0
         dir_amount = 0
         for file_name in relevant_names:
@@ -517,7 +518,6 @@ def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
                 elif os.path.isdir(os.path.join(current_dir, file_name)):
                     dir_amount = dir_amount + 1
                     save_dir = os.path.join(current_dir, file_name)
-        if (quiet == False): print(f"Highest count name: {max_name}. Its count: {max_val}")
         if (quiet == False): print(f"CSVs:{csv_amount}. Dirs: {dir_amount}")
         if csv_amount >= dir_amount:
             # Assume we're on the last layer
@@ -545,22 +545,31 @@ def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
                 if (highest_trimmed_occurances-trimmed_occurances >= max_val): 
                     # Drop in similarity as great as the most commonly seen file name.
                     # Assume this is the boundary between constant name and test/sim-specific name
+                    constant_name = max_name[index+1:]
+                    if (split_strategy == "default"):
+                        if (max_name.find("__") == -1):
+                            split_strategy = "a" # Default if there's no double underscore
+                        else:
+                            split_strategy = "c" # Default if there is a double underscore
+                    if not quiet: print(f"Applying split strategy {split_strategy}")
                     if (split_strategy == "a"):
-                        # Assume all identical text at the end is part of the variable name
-                        if constant_name[0] == "_":
-                            constant_name = constant_name[1:]
-                    if (split_strategy == "b"):
+                        # Assume all identical text is part of the variable name
+                        pass
+                    elif (split_strategy == "b"):
                         # Assume the variable name is separated by an underscore, and has no underscores in the middle.
-                        new_index = (len(max_name)-max_name.rfind("_"))*-1
+                        if not quiet: print(f"Found _ at index {constant_name.rfind("_")}")
+                        new_index = (len(constant_name)-constant_name.rfind("_"))*-1
                         if new_index > index:
-                            index = new_index
-                    if (split_strategy == "c"):
+                            constant_name = constant_name[new_index:]
+                    elif (split_strategy == "c"):
                         # Assume the variable name is separated by a double underscore, 
                         # and has no double underscores in the middle.
-                        new_index = (len(max_name)-max_name.rfind("__"))*-1
+                        new_index = (len(constant_name)-constant_name.rfind("__"))*-1
                         if new_index > index:
-                            index = new_index
-                    constant_name = max_name[index+1:]
+                            constant_name = constant_name[new_index:]
+                    if constant_name[0] == "_":
+                        if not quiet: print("Removing underscore at start")
+                        constant_name = constant_name[1:]
                     names.append(constant_name)
                     for name in relevant_names:
                         if constant_name in name and name[-4:] == ".csv":
@@ -584,7 +593,7 @@ def read_tree_names(read_dir_path, split_strategy='c', quiet=True):
 
 # Reads a directory's contents and generates a list of numbers (swept values) from the names of its files/folders. 
 # Must have a "identification_string=" before each value to match with.
-def read_dir_constant_values(read_dir_path, identification_string):
+def read_dir_values(read_dir_path, identification_string):
     listA = []
     for filename in os.listdir(read_dir_path):
         #print(filename)
@@ -599,11 +608,11 @@ def read_dir_constant_values(read_dir_path, identification_string):
 
 # Given list of constants (in proper order), navigates a tree of directories and returns the swept values of those 
 # constants (as a dict). Follows the last branch read from each directory,
-def read_tree_constant_values(read_dir_path, constant_names=None, quiet=True):
+def read_tree_values(read_dir_path, constant_names=None, quiet=True, split_strategy="default"):
     current_dir = read_dir_path
     values = {}
     if (constant_names==None):
-        constant_names, tmp = read_tree_names(read_dir_path, quiet=quiet)
+        constant_names, _ = read_tree_names(read_dir_path, quiet=quiet, split_strategy=split_strategy)
     if (isinstance(constant_names, str)):
         constant_names = [constant_names]
     for constant_name in constant_names:
@@ -622,7 +631,7 @@ def read_tree_constant_values(read_dir_path, constant_names=None, quiet=True):
     
 # Reads a cadence generated csv and generates a list of swept values from the metadata of each column
 # Must have an "identification_string=" before each value to match with.
-def read_cadence_constant_values(read_csv_path, identification_string):
+def read_cadence_values(read_csv_path, identification_string):
     if identification_string[-1] == '=':
         identification_string[:-1] # Remove '='
     df = pd.read_csv(read_csv_path)
@@ -639,9 +648,9 @@ def read_cadence_constant_values(read_csv_path, identification_string):
 # implementation, but would likely cause problems after further development.
 # def read_constants(read_path, identification_string):
 #     if os.path.isdir(read_path):
-#         return read_tree_constant_values(read_path, identification_string)
+#         return read_tree_values(read_path, identification_string)
 #     elif (read_path[-4:] == ".csv"):
-#         return read_cadence_constant_values(read_path, identification_string)
+#         return read_cadence_values(read_path, identification_string)
 #     else:
 #         print("File path does not point to a directory or a csv")
 #         return -1
@@ -655,9 +664,9 @@ def match_metadata_to_defined_constants(header_cell, defined_constants, error_re
     constant_names = read_cadence_metadata_names(header_cell, quiet)
     for constant in defined_constants:
         if constant not in constant_names:
-            print(f"\nERROR: The string \"{constant}\" from constant_names_in_order was not found in the \
-                  header cell of column {error_column_num}")
-            print(f"The constant names in the metadata of {error_read_file_path}'s header cell in column {error_column_num} are:")
+            print(f"\nERROR: The string \"{constant}\" from constant_names_in_order was not found in the " + 
+                  f"header cell of column {error_column_num} for the following file: \n{error_read_file_path}")
+            print(f"The constant names in that cell are:")
             print_cadence_metadata_names(error_read_file_path, quiet)
             raise ValueError("See above")
     sorted_constants = sorted(constants, key=lambda constant: defined_constants.index(constant["name"]))
@@ -794,12 +803,14 @@ def read_cadence_csv(read_file_path, constant_names_in_order="default", new_x_la
                     print(new_df)
                 break
         all_values[name] = clean_list(all_values[name], quiet=quiet)
-    i = 0
+    i = 1
+    values_list = []
     for constant_name in constant_names_in_order:
+        values_list.append(all_values[constant_name])
         print(f"Layer {i} of keys for {constant_name}: {all_values[constant_name]}")
         i = i+1
     print(f"Final dataframe columns: [{new_x_label}, {new_y_label}]\n")
-    return data, all_values
+    return data, values_list
 
 # This is considered bad practice. I don't care too much. Definitely ugly though.
 suggested_names = False
@@ -820,11 +831,13 @@ def read_tree_csv(read_dir_path, constant_names_in_order, file_identifier="defau
     data, all_values, final_column_values = read_tree_csv_recursion(current_dir, constant_names_in_order, 
                                                                     file_identifier, quiet)
     i = 1
+    values_list = []
     for constant_name in constant_names_in_order:
+        values_list.append(all_values[constant_name])
         print(f"Layer of keys {i} for {constant_name}: {all_values[constant_name]}")
         i = i+1
     print(f"Final dataframe columns: {final_column_values}\n")
-    return data, all_values
+    return data, values_list
 
 # Data and all_values are both built in reverse
 def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifier, quiet=True):
@@ -840,7 +853,7 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
             raise ValueError("Collection of constant names contains a non-string value")
     else:
         raise ValueError("Constant_names format unrecognized. Must be a string or collection of strings")
-    all_names_values = read_tree_constant_values(current_dir, name)
+    all_names_values = read_tree_values(current_dir, name)
     if (all_names_values == None):
         global suggested_names
         print(f"Warning: Found no files/directories in {current_dir} containing {name} followed by an int or float")
