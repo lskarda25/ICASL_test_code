@@ -548,7 +548,7 @@ def read_tree_names(read_dir_path, split_strategy="default", quiet=True):
                     constant_name = max_name[index+1:]
                     if (split_strategy == "default"):
                         if (max_name.find("__") == -1):
-                            split_strategy = "a" # Default if there's no double underscore
+                            split_strategy = "b" # Default if there's no double underscore
                         else:
                             split_strategy = "c" # Default if there is a double underscore
                     if not quiet: print(f"Applying split strategy {split_strategy}")
