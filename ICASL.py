@@ -379,8 +379,8 @@ def read_cadence_metadata(header_cell_or_file, quiet=True):
     else:
         if "(" not in hcof or ")" not in hcof:
             # Input is neither csv file or cell with parenthesis to extract metadata from
-            if not quiet: print(f"Warning: Input '{hcof}' is not a .csv and does not contain parenthesis. \
-                                Returning empty list.")
+            if not quiet: print(f"Warning: Input '{hcof}' is not a .csv and does not contain parenthesis. " + 
+                                f"Returning empty list.")
             return []
         else:
             if not quiet: print(f"Assuming input: '{hcof}' is a header cell.")
@@ -471,8 +471,8 @@ def read_tree_names(read_dir_path, split_strategy="default", quiet=True):
                           if (os.path.isdir(os.path.join(current_dir, file_name)) or file_name[-4:] == ".csv")]
         if (quiet == False): print(f"Relevant names: {relevant_names}")
         if relevant_names == []:
-            raise ValueError(f"{current_dir} was read as a branch in a tree of data, but did not \
-                             contain any directories or csv's within.")
+            raise ValueError(f"{current_dir} was read as a branch in a tree of data, but did not " +
+                             f"contain any directories or csv's within.")
         for file_name in relevant_names:
             name = parse_constant_name_from_string(file_name)
             if name == None:
@@ -501,8 +501,8 @@ def read_tree_names(read_dir_path, split_strategy="default", quiet=True):
                 if max_name[i:] in names:
                     repeat = True
             if repeat == True:
-                print(f"Warning: {max_name} was detected in two separate depths of tree. Using next most likely \
-                      constant name at lower depth.")
+                print(f"Warning: {max_name} was detected in two separate depths of tree. Using next most likely " +
+                      f"constant name at lower depth.")
                 blacklist.append(max_name)
                 continue
             elif repeat == False:
@@ -601,8 +601,8 @@ def read_dir_values(read_dir_path, identification_string):
         if num is not None:
             listA.append(num)
     if (len(listA) == 0):
-        print(f"Found no files/directories in {read_dir_path} containing {identification_string} \
-              followed by an int or float")
+        print(f"Found no files/directories in {read_dir_path} containing {identification_string} " +
+              f"followed by an int or float")
         return []
     return clean_list(listA) # converts to ints/float, sorts, filters
 
@@ -846,8 +846,8 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
     if isinstance(remaining_names_in_order, str):
         name = remaining_names_in_order
     elif isinstance(remaining_names_in_order, collections.abc.Iterable):
-        if not quiet: print(f"Remaining names in order[0]: {remaining_names_in_order[0]}. \
-                            Type: {type(remaining_names_in_order[0])}")
+        if not quiet: print(f"Remaining names in order[0]: {remaining_names_in_order[0]}. " +
+                            f"Type: {type(remaining_names_in_order[0])}")
         name = remaining_names_in_order[0]
         if not isinstance(name, str):
             raise ValueError("Collection of constant names contains a non-string value")
@@ -890,14 +890,14 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
             if value is None:
                 continue
             if value in error_checking_values:
-                print(f"Warning: the value {value} appears alongside the constant {name} more than once in {current_dir}. \
-                      Output will be unpredictable")
+                print(f"Warning: the value {value} appears alongside the constant {name} more than once in {current_dir}. "
+                      + f"Output will be unpredictable")
             error_checking_values.append(value)
             new_dir = os.path.join(current_dir, dir)
 
             if not os.path.isdir(new_dir):
-                print(f"Warning: Found something with \"{name}\" and \"{value}\" in {current_dir} that should be \
-                      a directory, but is not. Skipping.")
+                print(f"Warning: Found something with \"{name}\" and \"{value}\" in {current_dir} that should be " +
+                      f"a directory, but is not. Skipping.")
                 continue
             if quiet == False: print(f"Opening {new_dir}")
             deeper_data, deeper_values, deeper_final_column_values = \
@@ -921,8 +921,8 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
         current_data = {}
         relevant_files = [file for file in os.listdir(current_dir) if name in file and ".csv" in file]
         if len(relevant_files) > 1 and file_identifier == "default":
-            if not quiet: print("No file identifier provided, and more than one available csv. \
-                                Returning without reading data.")
+            if not quiet: print("No file identifier provided, and more than one available csv. " +
+                                "Returning without reading data.")
             return None, None, None
         files = [file for file in os.listdir(current_dir) if file_identifier in file and name in file and ".csv" in file]
         if len(files) == 0:
@@ -950,8 +950,8 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
             if value is None:
                 continue
             if value in error_checking_values:
-                print(f"Warning: the value {value} appears alongside the constant {name} and file identifier \
-                      {file_identifier} more than once in {current_dir}. Output will be unpredictable")
+                print(f"Warning: the value {value} appears alongside the constant {name} and file identifier " +
+                      f"{file_identifier} more than once in {current_dir}. Output will be unpredictable")
             error_checking_values.append(value)
             file_path = os.path.join(current_dir, file_name)
             if (quiet == False): print(f"Reading file: {file_path}")
