@@ -206,6 +206,14 @@ def scale(list):
     k = 10**(int(math.floor(math.log10(abs(max)) / 3) * 3))
     return array/k # Return the scaled array
 
+# Scales a list, but uses a larger list as a reference for how much to scale by. Useful for multiple scaled lines on one plot.
+def scale_by(list, reference):
+    array = np.asarray(reference, dtype='float') # Python's lists don't support multiplication by a float. Numpy's arrays do.
+    max = np.max(np.abs(array))
+    k = 10**(int(math.floor(math.log10(abs(max)) / 3) * 3))
+    array2 = np.asarray(list, dtype='float')
+    return array2/k # Return the scaled array
+
 # Determine the appropriate prefix for arrays that use scale(). 
 # PASS THE ORIGINAL LIST, NOT THE SCALED
 def prefix(list):
