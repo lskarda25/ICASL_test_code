@@ -328,6 +328,13 @@ def convert_to_num(input):
     else:
         raise ValueError(f"Unsupported Type: {type(input)}")
 
+def fix_dataframe(df):
+    df = df.dropna(how='all')
+    # df = df.astype(str) # Converts all to strings. Next line will throw an error if they're not. 
+    # df = df[df[df.columns[0]].str.strip().astype(bool)] # Clears empty rows and whitespace rows
+    # df = convert_to_num(df) # Convert back to either ints or floats - decides which.
+    return df
+
 # Sorts, removes duplicates, converts to either floats or ints depending on precision, rounds off imprecision.
 def clean_list(listA, quiet=True):
     if not quiet: print(f"Cleaning list of nums: {listA}")
