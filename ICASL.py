@@ -148,10 +148,11 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
         line.set_color(color)
     
     # Legend styling. Adds a legend if you don't pass one to this function.
-    if (legend != None or legend_style != "None"):
+    if (legend != None or legend_style != "None" or len(lines) > 1):
         if (legend == None):
             # If you don't pass a legend but request a style, I put it in a box on the right side
-            legend = ax.legend(bbox_to_anchor=(1.02, 1))
+            #legend = ax.legend(bbox_to_anchor=(1.02, 1))
+            legend = ax.legend()
         elif (not isinstance(legend, lg.Legend)):
             raise ValueError(f"legend is of invalid type {type(legend)}. It should the object that ax.legend() returns.")
         # Style legend
