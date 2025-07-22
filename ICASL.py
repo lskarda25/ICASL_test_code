@@ -83,14 +83,22 @@ def test():
 
 # Performs numpy's arange() function (which generates a list of numbers from a start, stop, and step)
 # The returned list will include the 'stop' value, which numpy usually excludes
-def arange(start, stop, step):
+def arange(start, stop, step, adjustment=1e-12):
     # Adding one more step size makes the stop value inclusive. 
     # Adding 1e-12 accounts for exclusion due to numpy's imprecision. (See next comments)
-    listA = np.arange(start, stop+step+1e-12, step)
+    listA = np.arange(start, stop+step+adjustment, step)
     # Rounds to a far out decimal place. Because of how floats are stored, np.arange could return bizarre values otherwise. 
     # i.e. 2 -> 1.99999999999999995
     listA = [float(round(element, 12)) for element in listA]
     return listA
+
+def read_csv(path):
+    try:
+        df = pd.read_csv(path, encoding='utf-8')
+    except UnicodeDecodeError:
+        df = pd.read_csv(path, encoding='utf-16')
+    return df
+
 
 # Apply default parameters that are shared by all plots. Any property can be changed afterwards if needed.
 def start_plot(title, xlabel, ylabel, style="a", cm_num=13):
@@ -148,10 +156,11 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
         line.set_color(color)
     
     # Legend styling. Adds a legend if you don't pass one to this function.
-    if (legend != None or legend_style != "None"):
+    if (legend != None or legend_style != "None" or len(lines) > 1):
         if (legend == None):
             # If you don't pass a legend but request a style, I put it in a box on the right side
-            legend = ax.legend(bbox_to_anchor=(1.02, 1))
+            #legend = ax.legend(bbox_to_anchor=(1.02, 1))
+            legend = ax.legend()
         elif (not isinstance(legend, lg.Legend)):
             raise ValueError(f"legend is of invalid type {type(legend)}. It should the object that ax.legend() returns.")
         # Style legend
