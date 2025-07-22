@@ -122,9 +122,9 @@ def start_plot(title, xlabel, ylabel, style="a", cm_num=13):
 
     # Color settings
     # Finish_plot() does this as well, with requiring a cm_num. But that function's not as intuitive to use overall.
-    if (style in "ab"):
-        cm=plt.get_cmap('gist_rainbow')
-        ax.set_prop_cycle('color', [cm(1.*i/cm_num) for i in range(cm_num)])
+    # if (style in "ab"):
+    #     cm=plt.get_cmap('gist_rainbow')
+    #     ax.set_prop_cycle('color', [cm(1.*i/cm_num) for i in range(cm_num)])
     
     return fig, ax
 
@@ -151,9 +151,10 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
                 legend=None, legend_style="None", annotations=None, close=True, show=False):
     # Sets line color
     lines = ax.lines
-    colors = cm(np.linspace(0, 1, len(lines)))
-    for line, color in zip(lines, colors):
-        line.set_color(color)
+    if cm != None:
+        colors = cm(np.linspace(0, 1, len(lines)))
+        for line, color in zip(lines, colors):
+            line.set_color(color)
     
     # Legend styling. Adds a legend if you don't pass one to this function.
     if (legend != None or legend_style != "None" or len(lines) > 1):
@@ -173,8 +174,9 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
             for legend_line in legend.get_lines(): 
                 # Thickens widths of the legend's example lines, NOT the actual lines on the plot
                 legend_line.set_linewidth(2.5)
-            for legend_line, color in zip(legend.get_lines(), colors):
-                legend_line.set_color(color)
+            if cm != None:
+                for legend_line, color in zip(legend.get_lines(), colors):
+                    legend_line.set_color(color)
     
     # Adds annotations to legend
     if (annotations != None):
