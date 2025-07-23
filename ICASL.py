@@ -47,6 +47,7 @@ import re                         # Regular expressions for text searching
 import math                       # Does math
 import collections                # I use this to check whether input to a function is a collection (list,array,etc.)
 import matplotlib.legend as lg    # I use this to check whether input to a function is a matplotlib legend
+from datetime import date         # Read current date
 
 # Copy, paste, and uncomment (ctrl+/) the following into a python/jupyter file to load these functions from any higher 
 # directory that contains ICASL.py
@@ -308,6 +309,59 @@ def execute_cells_by_tag(group_tag):
 # This code is janky and might depreciate fast
 # Only other way to do this would be through javascript - I had kernal issues. I don't think VSCode supports switching between javascript and python in the middle of running code
 # Or an extension, but the ones that do this are more obscure (and seem poorly written) and I don't want to download malicious code to UT's network
+
+def generate_experiment_name(run_type, local_temps, device_name, info = ""):
+    DATE =  str(date.today())
+    DATE_DIR = os.path.join(f"{device_name}_Results", f"{DATE}")
+    i = 1
+    # Starts directory name for run (inside DEVICE_NAME/DATE/) with run_type and a number, which is generated based off existing runs.
+    while (True) : 
+        run_exists = False
+        if os.path.isdir(DATE_DIR) == False:
+            run_dir = os.path.join(DATE_DIR, f"{run_type}_{i}_")
+            break
+        dirs = os.listdir(DATE_DIR)
+        for dir in dirs:
+            if f"{run_type}_{i}" in dir:
+                run_exists = True
+                break
+        if run_exists == False:
+            run_dir = os.path.join(DATE_DIR, f"{run_type}_{i}_")
+            break
+        else:
+            i = i+1
+            continue
+    descriptors = []
+    # To-do: Revise this so it doesn't have to be a string
+    if ((not isinstance(local_temps, collections.abc.Iterable)) or isinstance(local_temps, str)):
+        descriptors.append(f"{local_temps}°C")    # Adds temperature if there's only one (such as a practice run)
+    elif len(local_temps) == 1:
+        descriptors.append(f"{local_temps[0]}°C")
+    descriptors.append("No_Plots")
+    if isinstance(info, str) and info != "":      # Adds extra info if desired
+        descriptors.append(f"{info}")
+    for descriptor in descriptors:
+        run_dir = run_dir + f"[{descriptor}]"
+    os.makedirs(run_dir, exist_ok=True)           # Makes directory
+    return run_dir
+    # If the directory already exists, it won't raise an error due to exist_ok=True
+
+def rename_dir_once_plotted(run_dir, remove_attribute):
+    # Changes name of run directory once some plots are in it.
+    try:
+        if not isinstance(remove_attribute, str): remove_attribute = str(remove_attribute)
+        if remove_attribute[0] == "[": remove_attribute = remove_attribute[1:]
+        if remove_attribute[-1] == "]": remove_attribute = remove_attribute[0:-1]
+        if f"[{remove_attribute}]" in run_dir:
+            new_run_dir = run_dir.replace(f"[{remove_attribute}]", "")
+            if new_run_dir[-1] == "_":
+                new_run_dir = new_run_dir[0:-1]
+            os.rename(run_dir, new_run_dir)
+            run_dir = new_run_dir
+            return run_dir
+    except PermissionError:
+        # Operating System might get mad if you have the directory open and try to rename. This simply moves on if it does.
+        pass
 
 ##########################################################################################################################
 ############### The next 15-ish functions are not that useful to know/use. Mostly behind the scenes stuff. ###############
