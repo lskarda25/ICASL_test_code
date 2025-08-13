@@ -52,9 +52,10 @@ from datetime import date         # Read current date
 # Copy, paste, and uncomment (ctrl+/) the following into a python/jupyter file to load these functions from any higher 
 # directory that contains ICASL.py
 ######################################################################
+# Loads ICASL.py from a higher directory
 # import os
 # import importlib.util
-# quiet = True
+# quiet=True
 # current_dir = "."
 # target_file = "ICASL.py"
 # target_name = "ICASL"
@@ -68,15 +69,16 @@ from datetime import date         # Read current date
 #         spec = importlib.util.spec_from_file_location(target_name, ICASL_path)
 #         ICASL = importlib.util.module_from_spec(spec)
 #         spec.loader.exec_module(ICASL)
+#         break
 #     else:
 #         # Move one level up
-#         parent_dir = os.path.dirname(current_dir)
+#         parent_dir = os.path.join(current_dir, "..")
 #         if not quiet: print(parent_dir)
 #         if current_dir == parent_dir:  # Reached the root directory
 #             raise ValueError("ICASL.py not found")
 #         else:
 #             current_dir = parent_dir
-# ICASL.test() 
+# ICASL.test()
 #######################################################################
 
 def test():
@@ -149,38 +151,82 @@ def add_legend_text(legend, text):
 # Honestly, this one's a bit messy (despite best effort). Might not be worth learning. 
 # Adding colors afterwards is nice - don't need to know the number beforehand. Completely abstracted away.
 def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gist_rainbow'), 
-                legend=None, legend_style="None", annotations=None, close=True, show=False):
-    # Sets line color
-    lines = ax.lines
+                legend=None, legend_style="#", annotations=None, close=True, show=False):
+    
+    # Check if there's multiple axes (left and right side)
+    multi_ax = False
+    if isinstance(ax, collections.abc.Iterable):
+        multi_ax = True
+        axes = ax # Rename accordingly
+
+    # Sets line color. Reads number of lines on its own
     if cm != None:
-        colors = cm(np.linspace(0, 1, len(lines)))
-        for line, color in zip(lines, colors):
-            line.set_color(color)
+        if multi_ax == False:
+            lines = ax.lines
+            colors = cm(np.linspace(0, 1, len(lines)))
+            for line, color in zip(lines, colors):
+                line.set_color(color)
+        else:
+            all_lines = []
+            for a in axes:
+                for line in a.lines:
+                    all_lines.append(line)
+            colors = cm(np.linspace(0, 1, len(all_lines)))
+            for line, color in zip(all_lines, colors):
+                line.set_color(color)
+
+
+    if legend_style == None:
+        raise ValueError("legend_style cannot be NoneType. Use 'n' to avoid all legend behavior.")
     
     # Legend styling. Adds a legend if you don't pass one to this function.
-    if (legend != None or legend_style != "None" or len(lines) > 1):
+    if ((legend != None or legend_style != "#" or len(lines) > 1) and "n" not in legend_style):
         if (legend == None):
-            # If you don't pass a legend but request a style, I put it in a box on the right side
-            #legend = ax.legend(bbox_to_anchor=(1.02, 1))
-            legend = ax.legend()
+            # Determine location
+            if "b2" in legend_style: bbox=(1.15, 1) # box on the right side
+            elif "b" in legend_style: bbox=(1.02, 1) # box on the right side, further right (for second axis)
+            else: bbox = None
+
+            if "ur" in legend_style: loc = "upper right"
+            elif "ul" in legend_style: loc = "upper left"
+            elif "lr" in legend_style: loc = "lower right"
+            elif "ll" in legend_style: loc = "lower left"
+
+            # Set legend
+            if multi_ax == False:
+                if bbox == None and loc == None: legend = ax.legend()
+                elif bbox == None and loc != None: legend = ax.legend(loc=loc)
+                elif bbox != None and loc == None: legend = ax.legend(bbox_to_anchor=bbox)
+            else:
+                all_lines = []
+                all_labels = []
+                for a in axes:
+                    lines, labels = a.get_legend_handles_labels()
+                    for line in lines:
+                        all_lines.append(line)
+                    for label in labels:
+                        all_labels.append(label)
+                if bbox == None: legend = axes[0].legend(all_lines, all_labels)
+                else: legend = axes[0].legend(all_lines, all_labels, bbox_to_anchor=bbox)
+                if bbox == None and loc == None: legend = axes[0].legend(all_lines, all_labels)
+                elif bbox == None and loc != None: legend = axes[0].legend(all_lines, all_labels, loc=loc)
+                elif bbox != None and loc == None: legend = axes[0].legend(all_lines, all_labels, bbox_to_anchor=bbox)
+                
         elif (not isinstance(legend, lg.Legend)):
-            raise ValueError(f"legend is of invalid type {type(legend)}. It should the object that ax.legend() returns.")
+            raise ValueError(f"legend is of invalid type {type(legend)}. It should be the object that ax.legend() returns.")
         # Style legend
-        if (legend_style == "None"):
-            # If you pass your legend but not a style, I default to this one
-            legend_style = "b"
-        if (legend_style == "a"):
-            pass
-        elif (legend_style == "b"):
+        if (legend_style == "#"): # If you pass your legend but not a style, I default to this one
+            legend_style = "kc"
+        if ("k" in legend_style): # Thickens widths of the legend's example lines, NOT the actual lines on the plot
             for legend_line in legend.get_lines(): 
-                # Thickens widths of the legend's example lines, NOT the actual lines on the plot
                 legend_line.set_linewidth(2.5)
+        if ("c" in legend_style): # Colors legend lines the same as actual lines
             if cm != None:
                 for legend_line, color in zip(legend.get_lines(), colors):
                     legend_line.set_color(color)
     
-    # Adds annotations to legend
-    if (annotations != None):
+    # Adds annotations to legend (an organized way to place them, little funky though.)
+    if (annotations != None and legend != None):
         if isinstance(annotations, str):
             legend = add_legend_text(legend, annotations)
         elif isinstance(annotations, collections.abc.Iterable):
@@ -210,6 +256,17 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
     # Closes
     if (close):
         plt.close(fig) # Saves memory, gets rid of warnings.
+
+# Limits the data of a dataframe. When plotting after this, matplotlib will adjust its y to fit your new data, which it won't
+# always do using the intended limiting function.
+def limit_data(df, column_name, start=None, end=None):
+    if start == None and end == None:
+        print("Warning: No reason to use limit data with no start or end limit")
+    if start != None:
+        df = df[df[column_name] > start]
+    if end != None:
+        df = df[df[column_name] < end]
+    return df
 
 # Determine the appropriate scaling for generated plots in Engineering Notation
 def scale(list):
@@ -281,6 +338,18 @@ def determine_precision(input):
 def set_precision(imprecise_element, list):
     imprecise_element = float(imprecise_element)
     return f"{imprecise_element:.{determine_precision(list)}f}"
+
+# Takes in a column of times and a column of magnitudes (each is really a dataframe series)
+# Assumes the bounds are limited such that the last point is settled and the first has not begun to 
+def settling_time(times, values, min_or_max):
+    pass
+#     min_or_max = min_or_max.lower()
+#     if (min_or_max not in ["min", "max"]):
+#         print("Warning: cannot compute settling time since min_or_max is not 'min' or 'max'.")
+#         return
+#     settled_value = values[-1]
+#     peak_value = min(values)
+
 
 def execute_cells_by_tag(group_tag):
     # Placeholder for outline. Actual code is below. 
