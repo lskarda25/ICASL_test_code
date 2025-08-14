@@ -122,7 +122,7 @@ def start_plot(title, xlabel, ylabel, style="a,c", cm_num=13):
     # Finish_plot() does this as well, with requiring a cm_num. But that function's not as intuitive to use overall.
     if ("c" in style):
         cm=plt.get_cmap('gist_rainbow')
-        ax.set_prop_cycle('color', [cm(1.*i/cm_num) for i in range(cm_num)])
+        ax.set_prop_cycle('color', cm(np.linspace(0, 1, cm_num)))
 
     # Removes margins on left/right side - lines no longer stop abruptly before edge of plot. Not always desired.
     if ("m" in style):
