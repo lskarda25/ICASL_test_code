@@ -103,7 +103,7 @@ def read_csv(path):
     return df
 
 # Apply default parameters that are shared by all plots. Any property can be changed afterwards if needed.
-def start_plot(title, xlabel, ylabel, style="ac", cm_num=13):
+def start_plot(title, xlabel, ylabel, style="a,c", cm_num=13):
     fig, ax = plt.subplots(layout='constrained')
     
     # Text and tick settings
@@ -818,10 +818,10 @@ def match_metadata_to_defined_constants(header_cell, defined_constants, error_re
             print(f"The constant names in that cell are:")
             print_cadence_metadata_names(error_read_file_path, quiet)
             raise ValueError("See above")
-    sorted_constants = sorted(constants, key=lambda constant: defined_constants.index(constant["name"]))
-    filtered_constants = [constant for constant in sorted_constants if constant["name"] in defined_constants]
+    filtered_constants = [constant for constant in constants if constant["name"] in defined_constants]
+    sorted_constants = sorted(filtered_constants, key=lambda constant: defined_constants.index(constant["name"]))
     #print(f"Sorted/filtered: {filtered_constants}")
-    return filtered_constants
+    return sorted_constants
 
 # Strips metadata out of Cadence column name
 def remove_text_in_parentheses(string):
