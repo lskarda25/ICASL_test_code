@@ -102,32 +102,38 @@ def read_csv(path):
         df = pd.read_csv(path, encoding='utf-16')
     return df
 
-
 # Apply default parameters that are shared by all plots. Any property can be changed afterwards if needed.
-def start_plot(title, xlabel, ylabel, style="a", cm_num=13):
+def start_plot(title, xlabel, ylabel, style="ac", cm_num=13):
     fig, ax = plt.subplots(layout='constrained')
     
-    # Text, tick, and grid Settings
-    if (style == "a"): # Matplotlib defaults
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        # Removes margins on left/right side - lines no longer stop abruptly before edge of plot. Not always desired.
-        ax.margins(x=0)
-        ax.grid()
-    elif (style == "b"): # Bigger & bolder text
+    # Text and tick settings
+    if ("b" in style): # Bigger & bolder text
         ax.set_title(title, fontdict={'fontsize': 16, 'fontweight': 'bold'}, y = 1.03)
         ax.set_xlabel(xlabel, fontdict={'fontsize': 12})
         ax.set_ylabel(ylabel, fontdict={'fontsize': 12})
         ax.tick_params(axis='both', which='major', labelsize=10)
-        ax.margins(x=0)
-        ax.grid()
+    else:
+        # Matplotlib defaults
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
 
     # Color settings
     # Finish_plot() does this as well, with requiring a cm_num. But that function's not as intuitive to use overall.
-    # if (style in "ab"):
-    #     cm=plt.get_cmap('gist_rainbow')
-    #     ax.set_prop_cycle('color', [cm(1.*i/cm_num) for i in range(cm_num)])
+    if ("c" in style):
+        cm=plt.get_cmap('gist_rainbow')
+        ax.set_prop_cycle('color', [cm(1.*i/cm_num) for i in range(cm_num)])
+
+    # Removes margins on left/right side - lines no longer stop abruptly before edge of plot. Not always desired.
+    if ("m" in style):
+        pass
+    else:
+        ax.margins(x=0)
+
+    if ("ng" in style):
+        pass
+    else:
+        ax.grid()
     
     return fig, ax
 
@@ -148,8 +154,9 @@ def add_legend_text(legend, text):
 # Keyword arguments are optional. If not provided, the default values in the definition below will be assumed.
 
 # This is all the code that can only run after a plot is filled. 
-# Honestly, this one's a bit messy (despite best effort). Might not be worth learning. 
+# Honestly, this one's a bit messy (despite best effort). Might not be worth learning?
 # Adding colors afterwards is nice - don't need to know the number beforehand. Completely abstracted away.
+# Legend_style is searched for 1-2 character sequences to determine how to construct the legend
 def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gist_rainbow'), 
                 legend=None, legend_style="#", annotations=None, close=True, show=False):
     
@@ -157,7 +164,7 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
     multi_ax = False
     if isinstance(ax, collections.abc.Iterable):
         multi_ax = True
-        axes = ax # Rename accordingly
+        axes = ax # Rename to be more sensical
 
     # Sets line color. Reads number of lines on its own
     if cm != None:
@@ -343,13 +350,6 @@ def set_precision(imprecise_element, list):
 # Assumes the bounds are limited such that the last point is settled and the first has not begun to 
 def settling_time(times, values, min_or_max):
     pass
-#     min_or_max = min_or_max.lower()
-#     if (min_or_max not in ["min", "max"]):
-#         print("Warning: cannot compute settling time since min_or_max is not 'min' or 'max'.")
-#         return
-#     settled_value = values[-1]
-#     peak_value = min(values)
-
 
 def execute_cells_by_tag(group_tag):
     # Placeholder for outline. Actual code is below. 
@@ -898,8 +898,12 @@ def reformat(write_dir_name, read_file_path, write_file_name, constant_names_in_
                     print(f"Writing to {write_current}")
                 break
 
+#############################################################################
+########################## Especially this one!!! ###########################
+#############################################################################
+
 # Reads a cadence-style csv (sims) into a tree of dictionaries. Allows for shared sim/test plotting code.
-# To-Do: Functionality for multiple csv files at final branch
+# To-Do: Functionality for multiple csv files at final branch?
 def read_cadence_csv(read_file_path, constant_names_in_order="default", new_x_label="default", 
                      new_y_label="default", quiet=True):
     df = pd.read_csv(read_file_path)
@@ -958,7 +962,7 @@ def read_cadence_csv(read_file_path, constant_names_in_order="default", new_x_la
         values_list.append(all_values[constant_name])
         print(f"Layer {i} of keys for {constant_name}: {all_values[constant_name]}")
         i = i+1
-    print(f"Final dataframe columns: [{new_x_label}, {new_y_label}]\n")
+    print(f"Final dataframe columns: ['{new_x_label}', '{new_y_label}']\n")
     return data, values_list
 
 # This is considered bad practice. I don't care too much. Definitely ugly though.
