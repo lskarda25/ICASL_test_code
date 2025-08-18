@@ -157,7 +157,7 @@ def add_legend_text(legend, text):
 # Honestly, this one's a bit messy (despite best effort). Might not be worth learning?
 # Adding colors afterwards is nice - don't need to know the number beforehand. Completely abstracted away.
 # Legend_style is searched for 1-2 character sequences to determine how to construct the legend
-def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gist_rainbow'), 
+def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_cmap('gist_rainbow'), 
                 legend=None, legend_style="#", annotations=None, close=True, show=False):
     
     # Check if there's multiple axes (left and right side)
@@ -252,7 +252,7 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", cm=plt.get_cmap('gis
     elif (save_dir != "None" and save_file != "None"):
         os.makedirs(save_dir, exist_ok=True)
         if os.path.isdir(save_dir):
-            fig.savefig(os.path.join(save_dir, save_file))
+            fig.savefig(os.path.join(save_dir, save_file), dpi=dpi)
         else:
             raise ValueError("Directory provided ({save_dir}) does not exist. Figure not saved.")
     else:
