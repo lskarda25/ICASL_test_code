@@ -1,57 +1,16 @@
 # Collection of functions for plotting, testing, and working with multidimensional data. 
+# Use the outline in the bottom left (VScode) to navigate functions. Press "Collapse all" in top right of that menu.
+
+######### Importing #########
 # Copy/paste the functions you want, or import the file into your code and write ICASL.example_function() to call them.
 # Two ways to import:
 # 1) Move into the same directory as your code and write "import ICASL" at top
 # 2) Move into any higher directory than your code and copy/paste the commented out section of code below. I'll likely
-#    place this somewhere high up in the Sharepoint eventually
-#
-# Use the outline in the bottom left (VScode) to navigate functions. Press "Collapse all" in top right of it.
-# The most useful functions are:
-#
-# arange() - performs numpy.arange(), but fixes many of the bugs and stupid behavior in it.
-# start_plot() - Applies default plotting settings. Styles built-in to choose from, can add more.
-# add_legend_text() - Adds an annotation to the bottom of the legend. Clean/organized way to add multiple of them.
-# finish_plot() - Saves, shows, closes, colors lines, applies legend styling, adds annotations.
-# scale() - Scales a list of nums such that the highest is between 1-999 (useful for Engineering Notation)
-# prefix() - Returns the corresponding Engineering Notation prefix, when provided an unscaled list
-# set_precision() - Pass an element, and a list it belongs to. Returns with trailing zeros. Makes file names sort better.
-# execute_cells_by_tag() - Runs all cells in a jupyter notebook with a given tag. Allows for running cells in groups. 
-#                          (Must copy/paste into your own code)
-# 
-# There are two types of csv input formats we often need to plot. I refer to them in this code as:
-# 1) Tree (Tests). Branching directories, each named for a constant value of a sweep variable (temp=100), which end in 
-# multiple csv files, also named for a constant value (VREF=.8), which contain 2D data within.
-# 2) Cadence (Sims). Virtuoso's default csv format is to stack 2 column data horizontally into one big file, embedding the 
-#    constant values for each simulation within the metadata of the header cells. Harder to write code for.
-#
-# The rest of these functions are designed to provide either conversion or dual functionality between these two formats.
-# Whether using them is worth the learning curve is debatable. AI is already good enough to do most of our plotting for us.
-# They are:
-# reformat() - Converts a Cadence csv into a tree structure of 2-column csv files
-# read_cadence_csv() - Reads a cadence-style csv into a tree of dictionaries, an easy data structure for plotting
-# read_tree_csv() - Reads a tree of directories into a tree of dictionaries, an easy data structure for plotting
-# read_tree_names() - Reads names of constants that were swept (temp, VREF) from a tree of directories. Makes assumptions.
-# read_cadence_metadata_names() - Reads names of constants that were swept (temp, VREF) from a cadence csv's metadata
-# read_tree_values() - Reads swept values of constants from directory tree
-# read_cadence_values() - Reads swept values of constants from cadence csv file
-
-# Most other functions are simply meant to be used internally by other functions. Don't bother looking at them.
-
-import matplotlib.pyplot as plt   # Plotting graphs and visualizing data
-import matplotlib.offsetbox as ob # An internal Matplotlib data structure. Used for cleaner annotations.
-import numpy as np                # Numerical operations, particularly with arrays
-import os                         # Interact with the operating system, such as handling file paths
-import pandas as pd               # Intuitive labeled 2D data
-import os                         # Interface with Operating System
-import re                         # Regular expressions for text searching
-import math                       # Does math
-import collections                # I use this to check whether input to a function is a collection (list,array,etc.)
-import matplotlib.legend as lg    # I use this to check whether input to a function is a matplotlib legend
-from datetime import date         # Read current date
+#    place this file somewhere high up in the Sharepoint, or properly publish as a python package
 
 # Copy, paste, and uncomment (ctrl+/) the following into a python/jupyter file to load these functions from any higher 
 # directory that contains ICASL.py
-######################################################################
+###
 # Loads ICASL.py from a higher directory
 # import os
 # import importlib.util
@@ -79,7 +38,68 @@ from datetime import date         # Read current date
 #         else:
 #             current_dir = parent_dir
 # ICASL.test()
-#######################################################################
+###
+
+######### Summary of Functions #########
+# arange() - performs numpy.arange(), but fixes many of the bugs and stupid behavior in it.
+# read_csv() - performs pandas.read_csv(), but adjusts for utf-16 encoding when needed.
+
+### Plotting ###
+# start_plot() - Applies default plotting settings. Styles built-in to choose from, can add more.
+# add_legend_text() - Adds an annotation to the bottom of the legend. Clean/organized way to add multiple of them.
+# finish_plot() - Saves, shows, closes, colors lines, applies legend styling, adds annotations.
+
+### Calcs ###
+# limit_data() - Removes dataframe data outside of a high and/or low range for a particular column
+# tran_peak(), tran_settle(), tran_start() - find useful points in transient response (can be used for settling time and delta_V)
+# find_closest() - find closest value in a list
+# convert_from_decibels()
+# calc_gain_margin()
+# calc_phase_margin()
+# calc_gain_bandwidth()
+# calc_crossover_freq()
+
+### Presentation ###
+# scale() - Scales a list of nums such that the highest is between 1-999 (useful for Engineering Notation)
+# scale_by() - performs scale(), but uses a different list as a reference for determining precision. Consistency across multiple lines.
+# prefix() - Returns the corresponding Engineering Notation prefix, when provided an unscaled list
+# set_precision() - Pass an element, and a list it belongs to. Returns element with proper trailing zeros. Makes file names sort better.
+
+### Testing ###
+# execute_cells_by_tag() - Allows for running cells in groups. (Can't call, must copy/paste)
+# generate_experiment_name() - Makes folder name for experiment. Attribute-based. Adds [No_Plots] attribute by default.
+# rename_dir_once_plotted() - Removes attribute (such as [No_Plots])
+
+### Reading in data ###
+# There are two types of csv input formats we often need to plot. I refer to them in this code as:
+# 1) Tree (Tests). Branching directories, each named for a constant value of a sweep variable (temp=100), which end in 
+# multiple csv files, also named for a constant value (VREF=.8), which contain 2-column data within.
+# 2) Cadence (Sims). Virtuoso's default csv format is to stack 2 column data horizontally into one big file, embedding the 
+#    constant values for each simulation within the metadata of the header cells. Harder to write code for.
+# The rest of these functions are designed to provide either conversion or dual functionality between these two formats.
+# Whether using them is worth the learning curve is debatable. AI is already good enough to do most of our plotting for us.
+# They are:
+# reformat() - Converts a cadence csv into a tree structure of 2-column csv files
+# read_cadence_csv() - (USEFUL!!!) Reads a cadence-style csv into a tree of dictionaries, an easy data structure for plotting
+# read_tree_csv() - Reads a tree of directories into a tree of dictionaries
+# read_tree_names() - Reads names of constants that were swept (temp, VREF) from a tree of directories. Makes assumptions.
+# read_cadence_metadata_names() - Reads names of constants that were swept (temp, VREF) from a cadence csv's metadata
+# read_tree_values() - Reads swept values of constants from directory tree
+# read_cadence_values() - Reads swept values of constants from cadence csv file
+
+# Most other functions are simply meant to be used internally by other functions. Don't bother looking at all of these.
+
+import matplotlib.pyplot as plt   # Plotting graphs and visualizing data
+import matplotlib.offsetbox as ob # An internal Matplotlib data structure. Used for cleaner annotations.
+import numpy as np                # Numerical operations, particularly with arrays
+import os                         # Interact with the operating system, such as handling file paths
+import pandas as pd               # Intuitive labeled 2D data
+import os                         # Interface with Operating System
+import re                         # Regular expressions for text searching
+import math                       # Does math
+import collections                # I use this to check whether input to a function is a collection (list,array,etc.)
+import matplotlib.legend as lg    # I use this to check whether input to a function is a matplotlib legend
+from datetime import date         # Read current date
 
 def test():
     print("ICASL is loaded!")
@@ -95,12 +115,19 @@ def arange(start, stop, step, adjustment=1e-12):
     listA = [float(round(element, 12)) for element in listA]
     return listA
 
+# Adjusts for utf-16 encoding when needed
 def read_csv(path):
     try:
         df = pd.read_csv(path, encoding='utf-8')
+        return df
     except UnicodeDecodeError:
+        pass
+    try:
         df = pd.read_csv(path, encoding='utf-16')
-    return df
+        return df
+    except UnicodeDecodeError:
+        print("ICASL.read_csv() may not yet account for this encoding scheme.")
+        raise UnicodeDecodeError()
 
 # Apply default parameters that are shared by all plots. Any property can be changed afterwards if needed.
 def start_plot(title, xlabel, ylabel, style="a,c", cm_num=13):
@@ -154,9 +181,9 @@ def add_legend_text(legend, text):
 # Keyword arguments are optional. If not provided, the default values in the definition below will be assumed.
 
 # This is all the code that can only run after a plot is filled. 
-# Honestly, this one's a bit messy (despite best effort). Might not be worth learning?
+# Honestly, this one's a bit messy (despite best effort). Might not be worth learning/using?
 # Adding colors afterwards is nice - don't need to know the number beforehand. Completely abstracted away.
-# Legend_style is searched for 1-2 character sequences to determine how to construct the legend
+# Legend_style is searched for 1-2 character sequences to determine how to construct the legend. Need to add delimiter eventually.
 def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_cmap('gist_rainbow'), 
                 legend=None, legend_style="#", annotations=None, close=True, show=False):
     
@@ -181,7 +208,6 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_
             colors = cm(np.linspace(0, 1, len(all_lines)))
             for line, color in zip(all_lines, colors):
                 line.set_color(color)
-
 
     if legend_style == None:
         raise ValueError("legend_style cannot be NoneType. Use 'n' to avoid all legend behavior.")
@@ -264,9 +290,14 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_
     if (close):
         plt.close(fig) # Saves memory, gets rid of warnings.
 
-# Limits the data of a dataframe. When plotting after this, matplotlib will adjust its y to fit your new data, which it won't
-# always do using the intended limiting function.
+##########################################################################################################################
+##################################################### Plotting Calcs #####################################################
+##########################################################################################################################
+
+# Limits the data of a dataframe. Good to use before calcs. Also, when plotting after data that's been passed through this, 
+# matplotlib will adjust its y to fit your new data, which it won't always do using the intended xlimit function.
 def limit_data(df, column_name, start=None, end=None):
+    # This honestly doesn't need to be a function, barely saves any lines of code. I just don't like the pandas syntax.
     if start == None and end == None:
         print("Warning: No reason to use limit data with no start or end limit")
     if start != None:
@@ -274,6 +305,116 @@ def limit_data(df, column_name, start=None, end=None):
     if end != None:
         df = df[df[column_name] < end]
     return df
+
+# Determines coordinates of peak
+# Limit data to only show one transient step response before calling
+def tran_peak(times, values, settling_direction, log=False):
+    if (settling_direction.lower() in ["up", "rising"]): peak_value = min(values)
+    elif (settling_direction.lower() in ["down", "falling"]): peak_value = max(values)
+    peak_time = times[np.where(values == peak_value)[0]][0]
+    if log:
+        print(f"Peak Time: {peak_time}")
+        print(f"Peak Value: {peak_value}")
+    return peak_time, peak_value
+
+# Determines coordinates where transient is officially settled
+# Limit data to only show one transient step response before calling
+def tran_settle(times, values, peak_value, percent_settling_threshold, log=False):
+    settled_value = np.mean(values[-3:-1])
+    threshold = abs(peak_value*percent_settling_threshold/100)
+    # These are the indices of every piece of data whose y value is not within the settled threshold
+    unsettled_indices = np.where(np.logical_or(values > settled_value+threshold, values < settled_value-threshold))[0]
+    if len(unsettled_indices) == 0: 
+        print("Error: Signal is always settled.")
+        settled_time = times[0]
+    else:
+        last_unsettled_time = times[unsettled_indices[-1]]
+        if log: print(f"Last Unsettled Time: {last_unsettled_time}")
+        if times[-1] != last_unsettled_time:
+            settled_time = times[unsettled_indices[-1]+1] # If your data range is too narrow and signal is oscillating, this may run while unsettled.
+        else:
+            print("Warning: Not settled by final time")
+            settled_time = times[-1]
+    if log:
+        print(f"Settled Value: {settled_value}")
+        print(f"Unsettled Indices: {unsettled_indices}")
+        print(f"Unsettled Times: {times[unsettled_indices]}")
+        print(f"Unsettled Values: {values[unsettled_indices]}")
+        print(f"Within Threshold Times: {np.array([x for x in times if x not in times[unsettled_indices]])}")
+        print(f"Within Threshold Values: {np.array([x for x in values if x not in values[unsettled_indices]])}")
+        print(f"Settled Time: {settled_time}")
+    return settled_time, settled_value
+
+# Determines coordinates where transient first begins
+# Limit data to only show one transient step response before calling
+# Works best with interpolation. Won't work at all if you have less than [std_width] points in the starting, settled region of your data.
+def tran_start(times, values, log=False, std_width=10):
+    # I thought it'd be fun to detect the start of transients (although uneccesary, usually already known) -- I trace through each time step, 
+    # finding the standard deviation shortly before and after, then take a ratio of those two stds. This ratio is within 20 and .05 everywhere 
+    # except around start of the transient, where it spikes to the 1,000's (with interpolation, stays within 5 and .2 and spikes to 1,000,000s)
+    # To find the exact point where the transient begins, I find the maximum drop in this ratio from one time step to the next. Works so far.
+    std_ratios = []
+    drops = []
+    if (len(values) < std_width*2+1):
+        print(f"Error: only {len(values)} data points. Cannot compute tran_start calculation.")
+        starting_time = 0
+        starting_value = 0
+    else:
+        for i, value, time in zip(range(len(values)), values, times):
+            if (i < std_width or i+std_width >= len(values)): std_ratios.append(1) ; drops.append(1) ; continue
+            if (values[i-std_width] == values[i-std_width+1]): std_ratios.append(1) ; drops.append(1) ; continue
+            if (values[i+std_width] == values[i+std_width-1]): std_ratios.append(1) ; drops.append(1) ; continue
+            past_std = np.std(values[i-std_width:i])
+            future_std = np.std(values[i:i+std_width])
+            std_ratio = future_std/past_std
+            std_ratios.append(std_ratio)
+            drops.append(std_ratios[i-1]/std_ratios[i])
+            if log: print(f"Index {i} : Time {time}: Value {value} : Ratio {future_std/past_std}")
+        starting_time = times[drops.index(max(drops))-2]
+        starting_value = values[np.where(times == starting_time)[0]][0]
+    if log:
+        print(f"Starting Value: {starting_value}")
+        print(f"Starting Time: {starting_time}")
+    return starting_time, starting_value
+
+def find_closest(listA, target):
+    return min(listA, key=lambda x: abs(x - target)) # Minimum of difference between a value and every value in a list -- finds closest value
+
+def convert_from_decibels(dB):
+    return 10**(dB/20)
+
+# Assumes gains and phases are perfectly aligned -- would need to use frequency as a middleman otherwise
+def calc_gain_margin(gains, phases, log=False):
+    inverted_phase = find_closest(phases, phases[0]-180)
+    gain_reference = gains[phases == inverted_phase]
+    gain_margin = 0-gain_reference
+    if log: print(f"Gain Margin: {gain_margin}")
+    return gain_margin
+
+# Assumes gains and phases are perfectly aligned
+def calc_phase_margin(gains, phases, log=False):
+    zero_gain = find_closest(gains, 0)
+    phase_reference = phases[gains == zero_gain]-phases[0]
+    phase_margin = (phase_reference+180)
+    if log: print(f"Phase Margin: {phase_margin}")
+    return phase_margin
+
+# Provide a frequency solidly on the one pole rolloff
+def calc_gain_bandwidth(freqs, gains, test_frequency, log=False):
+    freq = find_closest(freqs, test_frequency)
+    GB = convert_from_decibels(gains[freqs == freq]) * freq
+    if log: print(f"Gain Bandwidth: {GB} (Hz)")
+    return GB
+
+# This might always be the preferred method of finding GB - not sure.
+def calc_crossover_freq(freqs, gains):
+    zero_gain = find_closest(gains, 0)
+    crossover_freq = freqs[gains == zero_gain]
+    return crossover_freq
+
+###########################################################################################################################
+################################################## Plotting Presentation ##################################################
+###########################################################################################################################
 
 # Determine the appropriate scaling for generated plots in Engineering Notation
 def scale(list):
@@ -346,10 +487,9 @@ def set_precision(imprecise_element, list):
     imprecise_element = float(imprecise_element)
     return f"{imprecise_element:.{determine_precision(list)}f}"
 
-# Takes in a column of times and a column of magnitudes (each is really a dataframe series)
-# Assumes the bounds are limited such that the last point is settled and the first has not begun to 
-def settling_time(times, values, min_or_max):
-    pass
+##########################################################################################################################
+###################################################### Experimental ######################################################
+##########################################################################################################################
 
 def execute_cells_by_tag(group_tag):
     # Placeholder for outline. Actual code is below. 
@@ -793,17 +933,6 @@ def read_cadence_values(read_csv_path, identification_string):
             listA.append(md[identification_string])
     return clean_list(listA) # converts to ints/float, sorts, filters
 
-# This was intended to determine whether a cadence or tree style format was passed. Would work well for current
-# implementation, but would likely cause problems after further development.
-# def read_constants(read_path, identification_string):
-#     if os.path.isdir(read_path):
-#         return read_tree_values(read_path, identification_string)
-#     elif (read_path[-4:] == ".csv"):
-#         return read_cadence_values(read_path, identification_string)
-#     else:
-#         print("File path does not point to a directory or a csv")
-#         return -1
-
 # Reads cadence metadata, compares to a pre-defined list of constants. Sorts/filters to be equivalent to those defined 
 # constants and produces a helpful blurb of text if something doesn't match.
 # Input: cadence-style csv's header cell, a list of constants for comparison, and details for outputting helpful error
@@ -1114,17 +1243,3 @@ def read_tree_csv_recursion(current_dir, remaining_names_in_order, file_identifi
                     final_column_values.append(column)
     current_values[name] = clean_list(current_values[name], quiet)
     return current_data, current_values, final_column_values
-
-# Can read either a tree of directories or a cadence-style csv. This one seems like a bad idea if I make 
-# read_cadence_csv() capable of reading in multiple files at once (and thus being callable on a dir)
-# def read_csv(read_path, constant_names_in_order, new_x_label="default", new_y_label="default", 
-#              tree_file_identifier="default", quiet=True):
-#     if not os.path.exists(read_path):
-#         raise ValueError("Path does not exist")
-#     elif os.path.isdir(read_path):
-#         return read_tree_csv(read_path, constant_names_in_order, tree_file_identifier, quiet)
-#     elif (read_path[-4:] == ".csv"):
-#         return read_cadence_csv(read_path, constant_names_in_order, new_x_label, new_y_label, quiet)
-#     else:
-#         raise ValueError("File path does not point to a directory or a csv.")
-    
