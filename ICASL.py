@@ -130,12 +130,17 @@ def read_csv(path):
         raise UnicodeDecodeError()
 
 # Apply default parameters that are shared by all plots. Any property can be changed afterwards if needed.
-def start_plot(title, xlabel, ylabel, style="a,c", cm_num=13):
+def start_plot(title, xlabel, ylabel, style="a:c", cm_num=13):
     fig, ax = plt.subplots(layout='constrained')
     
     # Text and tick settings
-    if ("b" in style): # Bigger & bolder text
+    if ("bb" in style): # Bigger & bolder text
         ax.set_title(title, fontdict={'fontsize': 16, 'fontweight': 'bold'}, y = 1.03)
+        ax.set_xlabel(xlabel, fontdict={'fontsize': 12})
+        ax.set_ylabel(ylabel, fontdict={'fontsize': 12})
+        ax.tick_params(axis='both', which='major', labelsize=10)
+    elif ("b" in style):
+        ax.set_title(title, fontdict={'fontsize': 14}, y = 1.03)
         ax.set_xlabel(xlabel, fontdict={'fontsize': 12})
         ax.set_ylabel(ylabel, fontdict={'fontsize': 12})
         ax.tick_params(axis='both', which='major', labelsize=10)
@@ -213,7 +218,7 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_
         raise ValueError("legend_style cannot be NoneType. Use 'n' to avoid all legend behavior.")
     
     # Legend styling. Adds a legend if you don't pass one to this function.
-    if ((legend != None or legend_style != "#" or len(lines) > 1) and "n" not in legend_style):
+    if ((legend != None or legend_style != "#" or len(lines) > 1 or annotations != None) and "n" not in legend_style):
         if (legend == None):
             # Determine location
             if "b2" in legend_style: bbox=(1.15, 1) # box on the right side
@@ -224,12 +229,22 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_
             elif "ul" in legend_style: loc = "upper left"
             elif "lr" in legend_style: loc = "lower right"
             elif "ll" in legend_style: loc = "lower left"
+            else: loc = None
+
+            if "s" in legend_style:
+                facecolor='white'
+                framealpha=1
+            else:
+                facecolor=None
+                framealpha=None
 
             # Set legend
             if multi_ax == False:
-                if bbox == None and loc == None: legend = ax.legend()
-                elif bbox == None and loc != None: legend = ax.legend(loc=loc)
-                elif bbox != None and loc == None: legend = ax.legend(bbox_to_anchor=bbox)
+                lines, labels = ax.get_legend_handles_labels()
+                if len(lines) == 1: # If there's only one line, I assume you don't actually want legend entries, and are going to glue annotations on later.
+                    lines = []
+                    labels = []
+                legend = ax.legend(lines, labels, loc=loc, bbox_to_anchor=bbox, facecolor=facecolor, framealpha=framealpha)
             else:
                 all_lines = []
                 all_labels = []
@@ -239,11 +254,10 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_
                         all_lines.append(line)
                     for label in labels:
                         all_labels.append(label)
-                if bbox == None: legend = axes[0].legend(all_lines, all_labels)
-                else: legend = axes[0].legend(all_lines, all_labels, bbox_to_anchor=bbox)
-                if bbox == None and loc == None: legend = axes[0].legend(all_lines, all_labels)
-                elif bbox == None and loc != None: legend = axes[0].legend(all_lines, all_labels, loc=loc)
-                elif bbox != None and loc == None: legend = axes[0].legend(all_lines, all_labels, bbox_to_anchor=bbox)
+                if len(all_lines) == 1:
+                    all_lines = []
+                    all_labels = []
+                legend = axes[0].legend(all_lines, all_labels, loc=loc, bbox_to_anchor=bbox, facecolor=facecolor, framealpha=framealpha)
                 
         elif (not isinstance(legend, lg.Legend)):
             raise ValueError(f"legend is of invalid type {type(legend)}. It should be the object that ax.legend() returns.")
