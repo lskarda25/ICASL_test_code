@@ -191,7 +191,16 @@ def add_legend_text(legend, text):
 # Legend_style is searched for 1-2 character sequences to determine how to construct the legend. Need to add delimiter eventually.
 def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_cmap('gist_rainbow'), 
                 legend=None, legend_style="#", annotations=None, close=True, show=False):
-    
+    default_style = "k:c"
+    if legend_style == "#":
+        legend_style = default_style
+
+    if isinstance(legend_style, str):
+        if (legend_style[0] != ":"):
+            legend_style = ":" + legend_style
+        if (legend_style[-1] != ":"):
+            legend_style = legend_style + ":"
+
     # Check if there's multiple axes (left and right side)
     multi_ax = False
     if isinstance(ax, collections.abc.Iterable):
@@ -218,25 +227,30 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_
         raise ValueError("legend_style cannot be NoneType. Use 'n' to avoid all legend behavior.")
     
     # Legend styling. Adds a legend if you don't pass one to this function.
-    if ((legend != None or legend_style != "#" or len(lines) > 1 or annotations != None) and "n" not in legend_style):
+    if ((legend != None or legend_style != default_style or len(lines) > 1 or annotations != None) and ":n:" not in legend_style):
         if (legend == None):
             # Determine location
-            if "b2" in legend_style: bbox=(1.15, 1) # box on the right side
-            elif "b" in legend_style: bbox=(1.02, 1) # box on the right side, further right (for second axis)
+            if ":b2:" in legend_style: bbox=(1.15, 1) # box on the right side, further right (for second axis)
+            elif ":b:" in legend_style: bbox=(1.02, 1) # box on the right side
             else: bbox = None
 
-            if "ur" in legend_style: loc = "upper right"
-            elif "ul" in legend_style: loc = "upper left"
-            elif "lr" in legend_style: loc = "lower right"
-            elif "ll" in legend_style: loc = "lower left"
+            if ":ur:" in legend_style: loc = "upper right"
+            elif ":ul:" in legend_style: loc = "upper left"
+            elif ":lr:" in legend_style: loc = "lower right"
+            elif ":ll:" in legend_style: loc = "lower left"
             else: loc = None
 
-            if "s" in legend_style:
+            if ":s:" in legend_style:
                 facecolor='white'
                 framealpha=1
             else:
                 facecolor=None
                 framealpha=None
+
+            if ":nc2:" in legend_style: ncols = 2
+            elif ":nc3:" in legend_style: ncols = 3
+            elif ":nc4:" in legend_style: ncols = 4
+            else: ncols = 1
 
             # Set legend
             if multi_ax == False:
@@ -244,7 +258,7 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_
                 if len(lines) == 1: # If there's only one line, I assume you don't actually want legend entries, and are going to glue annotations on later.
                     lines = []
                     labels = []
-                legend = ax.legend(lines, labels, loc=loc, bbox_to_anchor=bbox, facecolor=facecolor, framealpha=framealpha)
+                legend = ax.legend(lines, labels, loc=loc, bbox_to_anchor=bbox, facecolor=facecolor, framealpha=framealpha, ncols=ncols)
             else:
                 all_lines = []
                 all_labels = []
@@ -257,17 +271,15 @@ def finish_plot(fig, ax, save_dir="none", save_file="none", dpi=100, cm=plt.get_
                 if len(all_lines) == 1:
                     all_lines = []
                     all_labels = []
-                legend = axes[0].legend(all_lines, all_labels, loc=loc, bbox_to_anchor=bbox, facecolor=facecolor, framealpha=framealpha)
+                legend = axes[0].legend(all_lines, all_labels, loc=loc, bbox_to_anchor=bbox, facecolor=facecolor, framealpha=framealpha, ncols=ncols)
                 
         elif (not isinstance(legend, lg.Legend)):
             raise ValueError(f"legend is of invalid type {type(legend)}. It should be the object that ax.legend() returns.")
-        # Style legend
-        if (legend_style == "#"): # If you pass your legend but not a style, I default to this one
-            legend_style = "kc"
-        if ("k" in legend_style): # Thickens widths of the legend's example lines, NOT the actual lines on the plot
+        # Style legend lines
+        if (":k:" in legend_style): # Thickens widths of the legend's example lines, NOT the actual lines on the plot
             for legend_line in legend.get_lines(): 
                 legend_line.set_linewidth(2.5)
-        if ("c" in legend_style): # Colors legend lines the same as actual lines
+        if (":c:" in legend_style): # Colors legend lines the same as actual lines
             if cm != None:
                 for legend_line, color in zip(legend.get_lines(), colors):
                     legend_line.set_color(color)
